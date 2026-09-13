@@ -6,7 +6,7 @@ session_start();
 require_once __DIR__ . '/../config/db.php';
 cekLogin();
 
-// Cek akses laporan
+
 if (!canAccessLaporan()) {
     $_SESSION['msg'] = 'ERROR: Anda tidak memiliki akses ke Laporan.';
     header('Location: ' . BASE_URL . '/pages/dashboard.php');
