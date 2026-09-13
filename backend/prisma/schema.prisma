@@ -1,0 +1,612 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ------------------------------------------------------------
+// PENGGUNA & RBAC (Sesuai Struktur Tabel Nyata `pengguna`)
+// ------------------------------------------------------------
+enum Role {
+  admin
+  supervisor
+  analis
+  client
+  klien
+}
+
+enum AccountStatus {
+  aktif
+  nonaktif
+}
+
+model User {
+  id        Int            @id @default(autoincrement())
+  nama      String         @db.VarChar(100)
+  username  String         @unique @db.VarChar(50)
+  password  String         @db.VarChar(255)
+  email     String?        @db.VarChar(100)
+  role      Role           @default(analis)
+  status    AccountStatus  @default(aktif)
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  // Relasi Audit Log
+  auditLogs          ActivityLog[]
+  sampleReceipts     SampleReceipt[]
+  samples            Sample[]
+  assignedWorkOrders WorkOrder[]         @relation("AssignedAnalyst")
+  createdWorkOrders  WorkOrder[]         @relation("CreatedWorkOrders")
+  preparations       SamplePreparation[]
+  conductedTests     TestResult[]
+  reviewedQc         QcSample[]          @relation("QcReviewer")
+  invoices           Invoice[]
+  clientAccesses     ClientAccess[]
+
+  @@map("pengguna")
+}
+
+// ------------------------------------------------------------
+// AUDIT TRAIL (Sesuai Struktur Tabel Nyata `log_aktivitas`)
+// ------------------------------------------------------------
+model ActivityLog {
+  id         Int       @id @default(autoincrement())
+  penggunaId Int?      @map("pengguna_id")
+  aksi       String?   @db.VarChar(200)
+  modul      String?   @db.VarChar(50)
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user       User?     @relation(fields: [penggunaId], references: [id], onDelete: SetNull)
+
+  @@index([penggunaId])
+  @@map("log_aktivitas")
+}
+
+// ------------------------------------------------------------
+// PENERIMAAN SAMPEL & SAMPEL (Sesuai Struktur Tabel Nyata)
+// ------------------------------------------------------------
+enum ReceiptStatus {
+  diterima
+  diproses
+  selesai
+  dibatalkan
+}
+
+enum SampleStatus {
+  antrian
+  diuji
+  review
+  selesai
+  ditolak
+}
+
+model SampleReceipt {
+  id              Int            @id @default(autoincrement())
+  nomorPenerimaan String         @unique @map("nomor_penerimaan") @db.VarChar(50)
+  klien           String         @db.VarChar(150)
+  tanggalTerima   DateTime       @map("tanggal_terima") @db.Date
+  jumlahSampel    Int?           @default(0) @map("jumlah_sampel")
+  jenisMaterial   String?        @map("jenis_material") @db.VarChar(200)
+  metodeUji       String?        @map("metode_uji") @db.VarChar(200)
+  keterangan      String?        @db.Text
+  status          ReceiptStatus? @default(diterima)
+  isConfirmed     Boolean?       @default(false) @map("is_confirmed")
+  dibuatOleh      Int?           @map("dibuat_oleh")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  creator    User?        @relation(fields: [dibuatOleh], references: [id])
+  samples    Sample[]
+  workOrders     WorkOrder[]
+  invoices       Invoice[]
+  clientAccesses ClientAccess[]
+
+  @@index([dibuatOleh])
+  @@map("penerimaan_sampel")
+}
+
+model Sample {
+  id            Int           @id @default(autoincrement())
+  penerimaanId  Int?          @map("penerimaan_id")
+  kodeSampel    String        @unique @map("kode_sampel") @db.VarChar(20)
+  tanggalMasuk  DateTime      @map("tanggal_masuk") @db.Date
+  jenisMaterial String        @map("jenis_material") @db.VarChar(100)
+  beratGram     Decimal?      @map("berat_gram") @db.Decimal(10, 3)
+  klien         String?       @db.VarChar(100)
+  metodeUji     String?       @map("metode_uji") @db.VarChar(50)
+  keterangan    String?       @db.Text
+  status        SampleStatus? @default(antrian)
+  dibuatOleh    Int?          @map("dibuat_oleh")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  receipt          SampleReceipt?      @relation(fields: [penerimaanId], references: [id], onDelete: SetNull)
+  creator          User?               @relation(fields: [dibuatOleh], references: [id])
+  xrfMeasurements  XrfMeasurement[]
+  workOrderSamples WorkOrderSample[]
+  preparations     SamplePreparation[]
+  testResults      TestResult[]
+  qcSamples        QcSample[]
+  invoiceItems     InvoiceItem[]
+
+  @@index([penerimaanId])
+  @@index([dibuatOleh])
+  @@map("sampel")
+}
+
+// ------------------------------------------------------------
+// XRF INTEGRATION & MEASUREMENTS
+// ------------------------------------------------------------
+model XrfDevice {
+  id         Int       @id @default(autoincrement())
+  deviceId   String    @unique @map("device_id") @db.VarChar(50)
+  deviceName String    @map("device_name") @db.VarChar(100)
+  deviceType String?   @default("XRF Explorer") @map("device_type") @db.VarChar(50)
+  ipAddress  String?   @map("ip_address") @db.VarChar(50)
+  lastSeenAt DateTime? @map("last_seen_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@map("xrf_devices")
+}
+
+model XrfMeasurement {
+  id             Int       @id @default(autoincrement())
+  deviceId       String    @default("XRF-7000") @map("device_id") @db.VarChar(50)
+  dbSource       String    @map("db_source") @db.VarChar(50)
+  reportId       Int       @map("report_id")
+  sampleName     String    @map("sample_name") @db.VarChar(100)
+  sampleSupplier String?   @map("sample_supplier") @db.VarChar(100)
+  testDate       DateTime? @map("test_date")
+  timestampMs    BigInt?   @map("timestamp_ms")
+  testTime       Int?      @map("test_time")
+  tubVoltage     Float?    @map("tub_voltage")
+  tubCurrent     Float?    @map("tub_current")
+  workCurveName  String?   @map("work_curve_name") @db.VarChar(100)
+  grade          String?   @db.VarChar(100)
+  operator       String?   @db.VarChar(50)
+  gps            String?   @default("(0.0,0.0)") @db.VarChar(100)
+  longitude      Float?    @default(0)
+  latitude       Float?    @default(0)
+  altitude       Float?    @default(0)
+  cps            Int?      @default(0)
+  counts         Int?      @default(0)
+  temperature    Float?    @default(0)
+  sampleId       Int?      @map("sample_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  sample   Sample?                  @relation(fields: [sampleId], references: [id], onDelete: SetNull)
+  elements XrfMeasurementElement[]
+
+  @@index([sampleId])
+  @@map("xrf_measurements")
+}
+
+model XrfMeasurementElement {
+  id            Int      @id @default(autoincrement())
+  measurementId Int      @map("measurement_id")
+  elementName   String   @map("element_name") @db.VarChar(10)
+  concentration Float    @default(0)
+  elementError  Float?   @default(0) @map("element_error")
+  unit          String?  @default("%") @db.VarChar(20)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  measurement XrfMeasurement @relation(fields: [measurementId], references: [id], onDelete: Cascade)
+
+  @@index([measurementId, elementName])
+  @@map("xrf_measurement_elements")
+}
+
+model XrfAdminLog {
+  id         Int      @id @default(autoincrement())
+  penggunaId Int?     @map("pengguna_id")
+  username   String   @db.VarChar(100)
+  role       String?  @db.VarChar(50)
+  deviceId   String?  @map("device_id") @db.VarChar(100)
+  ipAddress  String?  @map("ip_address") @db.VarChar(50)
+  status     String   @db.VarChar(50)
+  message    String?  @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("xrf_admin_logs")
+}
+
+// ------------------------------------------------------------
+// WORK ORDER & EQUIPMENT MANAGEMENT
+// ------------------------------------------------------------
+enum WorkOrderPriority {
+  normal
+  tinggi
+  urgent
+}
+
+enum WorkOrderStatus {
+  draft
+  aktif
+  selesai
+  dibatalkan
+}
+
+enum EquipmentStatus {
+  tersedia
+  digunakan
+  maintenance
+  rusak
+}
+
+model Equipment {
+  id                    Int              @id @default(autoincrement())
+  kodeAlat              String           @unique @map("kode_alat") @db.VarChar(20)
+  nama                  String           @db.VarChar(150)
+  lokasi                String?          @db.VarChar(100)
+  status                EquipmentStatus? @default(tersedia)
+  tanggalKalibrasi      DateTime?        @map("tanggal_kalibrasi") @db.Date
+  masaBerlakuKalibrasi  DateTime?        @map("masa_berlaku_kalibrasi") @db.Date
+  jamPakai              Int?             @default(0) @map("jam_pakai")
+  jadwalMaintenance     DateTime?        @map("jadwal_maintenance") @db.Date
+  pic                   String?          @db.VarChar(100)
+  catatan               String?          @db.Text
+  createdAt             DateTime         @default(now()) @map("created_at")
+
+  workOrders  WorkOrder[]
+  testResults TestResult[]
+
+  @@map("peralatan")
+}
+
+model WorkOrder {
+  id            Int                @id @default(autoincrement())
+  nomorWo       String             @unique @map("nomor_wo") @db.VarChar(20)
+  penerimaanId  Int?               @map("penerimaan_id")
+  lingkupBatch  Boolean            @default(false) @map("lingkup_batch")
+  analisId      Int?               @map("analis_id")
+  peralatanId   Int?               @map("peralatan_id")
+  parameter     String?            @db.VarChar(200)
+  metode        String?            @db.VarChar(50)
+  prioritas     WorkOrderPriority? @default(normal)
+  jadwalMulai   DateTime?          @map("jadwal_mulai")
+  jadwalSelesai DateTime?          @map("jadwal_selesai")
+  status        WorkOrderStatus?   @default(draft)
+  selesaiAt     DateTime?          @map("selesai_at")
+  catatan       String?            @db.Text
+  dibuatOleh    Int?               @map("dibuat_oleh")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @default(now()) @updatedAt @map("updated_at")
+
+  receipt          SampleReceipt?      @relation(fields: [penerimaanId], references: [id], onDelete: SetNull)
+  assignedAnalyst  User?               @relation("AssignedAnalyst", fields: [analisId], references: [id])
+  equipment        Equipment?          @relation(fields: [peralatanId], references: [id])
+  creator          User?               @relation("CreatedWorkOrders", fields: [dibuatOleh], references: [id])
+  workOrderSamples WorkOrderSample[]
+  preparations     SamplePreparation[]
+
+  @@index([penerimaanId])
+  @@index([analisId])
+  @@index([peralatanId])
+  @@index([dibuatOleh])
+  @@map("work_order")
+}
+
+model WorkOrderSample {
+  id        Int      @id @default(autoincrement())
+  woId      Int      @map("wo_id")
+  sampelId  Int      @map("sampel_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  workOrder WorkOrder @relation(fields: [woId], references: [id], onDelete: Cascade)
+  sample    Sample    @relation(fields: [sampelId], references: [id], onDelete: Cascade)
+
+  @@unique([woId, sampelId], map: "uq_wo_sampel")
+  @@index([sampelId])
+  @@map("work_order_sampel")
+}
+
+// ------------------------------------------------------------
+// SAMPLE PREPARATION & CHEMICAL REAGENTS
+// ------------------------------------------------------------
+enum PreparationMethod {
+  destruksi_asam
+  ekstraksi
+  pengenceran
+  fusion
+  lainnya
+}
+
+model ChemicalReagent {
+  id                Int       @id @default(autoincrement())
+  kodeBahan         String    @unique @map("kode_bahan") @db.VarChar(20)
+  nama              String    @db.VarChar(150)
+  stok              Decimal   @default(0.000) @db.Decimal(10, 3)
+  satuan            String?   @db.VarChar(20)
+  stokMinimum       Decimal?  @default(0.000) @map("stok_minimum") @db.Decimal(10, 3)
+  supplier          String?   @db.VarChar(100)
+  tanggalKadaluarsa DateTime? @map("tanggal_kadaluarsa") @db.Date
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@map("bahan")
+}
+
+model SamplePreparation {
+  id                Int               @id @default(autoincrement())
+  workOrderId       Int?              @map("work_order_id")
+  sampelId          Int               @map("sampel_id")
+  metodePreparasi   PreparationMethod @map("metode_preparasi")
+  prosedur          String?           @db.Text
+  faktorPengenceran Decimal?          @default(1.0000) @map("faktor_pengenceran") @db.Decimal(10, 4)
+  volumeAwalMl      Decimal?          @map("volume_awal_ml") @db.Decimal(8, 3)
+  volumeAkhirMl     Decimal?          @map("volume_akhir_ml") @db.Decimal(8, 3)
+  reagenDetail      String?           @map("reagen_detail") @db.Text
+  blankoDisiapkan   Boolean?          @default(false) @map("blanko_disiapkan")
+  standarDisiapkan  Boolean?          @default(false) @map("standar_disiapkan")
+  spikeDisiapkan    Boolean?          @default(false) @map("spike_disiapkan")
+  duplikatDisiapkan Boolean?          @default(false) @map("duplikat_disiapkan")
+  suhuRuang         Decimal?          @map("suhu_ruang") @db.Decimal(5, 2)
+  kelembaban        Decimal?          @map("kelembaban") @db.Decimal(5, 2)
+  catatan           String?           @db.Text
+  analisId          Int?              @map("analis_id")
+  tanggalPreparasi  DateTime?         @map("tanggal_preparasi") @db.Date
+  createdAt         DateTime          @default(now()) @map("created_at")
+
+  workOrder   WorkOrder?   @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  sample      Sample       @relation(fields: [sampelId], references: [id], onDelete: Cascade)
+  analyst     User?        @relation(fields: [analisId], references: [id], onDelete: SetNull)
+  testResults TestResult[]
+  qcSamples   QcSample[]
+
+  @@index([workOrderId])
+  @@index([sampelId])
+  @@index([analisId])
+  @@map("preparasi_sampel")
+}
+
+// ------------------------------------------------------------
+// TESTING & RESULTS ACQUISITION
+// ------------------------------------------------------------
+enum TestConclusion {
+  lulus
+  tidak_lulus
+  pending
+}
+
+model TestResult {
+  id                Int             @id @default(autoincrement())
+  kodeUji           String          @unique @map("kode_uji") @db.VarChar(20)
+  sampelId          Int             @map("sampel_id")
+  noReferensi       String?         @map("no_referensi") @db.VarChar(50)
+  preparasiId       Int?            @map("preparasi_id")
+  parameter         String          @db.VarChar(100)
+  nilai             Decimal         @db.Decimal(12, 4)
+  faktorPengenceran Decimal?        @default(1.0000) @map("faktor_pengenceran") @db.Decimal(10, 4)
+  nilaiTerkoreksi   Decimal?        @map("nilai_terkoreksi") @db.Decimal(12, 4)
+  satuan            String?         @db.VarChar(20)
+  faktorKonversi    Decimal?        @default(1.00000000) @map("faktor_konversi") @db.Decimal(14, 8)
+  batasMin          Decimal?        @map("batas_min") @db.Decimal(12, 4)
+  batasMaks         Decimal?        @map("batas_maks") @db.Decimal(12, 4)
+  metode            String?         @db.VarChar(50)
+  alatId            Int?            @map("alat_id")
+  analisId          Int?            @map("analis_id")
+  kesimpulan        TestConclusion? @default(pending)
+  catatan           String?         @db.Text
+  tanggalUji        DateTime?       @map("tanggal_uji") @db.Date
+  createdAt         DateTime        @default(now()) @map("created_at")
+
+  sample      Sample             @relation(fields: [sampelId], references: [id], onDelete: Cascade)
+  preparation SamplePreparation? @relation(fields: [preparasiId], references: [id], onDelete: SetNull)
+  equipment   Equipment?         @relation(fields: [alatId], references: [id], onDelete: SetNull)
+  analyst     User?              @relation(fields: [analisId], references: [id], onDelete: SetNull)
+
+  @@index([sampelId])
+  @@index([preparasiId])
+  @@index([alatId])
+  @@index([analisId])
+  @@map("hasil_uji")
+}
+
+// ------------------------------------------------------------
+// QUALITY CONTROL & QA VALIDATION
+// ------------------------------------------------------------
+enum QcType {
+  blanko
+  standar
+  spike
+  duplikat
+}
+
+enum QcFlag {
+  pass
+  fail
+  warning
+}
+
+enum QcStatus {
+  pending
+  disetujui
+  ditolak
+}
+
+model QcSample {
+  id             Int       @id @default(autoincrement())
+  preparasiId    Int?      @map("preparasi_id")
+  sampelId       Int       @map("sampel_id")
+  tipeQc         QcType    @map("tipe_qc")
+  parameter      String?   @db.VarChar(100)
+  nilaiQc        Decimal?  @map("nilai_qc") @db.Decimal(12, 4)
+  nilaiExpected  Int?      @map("nilai_expected")
+  satuan         String?   @db.VarChar(20)
+  persenRecovery Decimal?  @map("persen_recovery") @db.Decimal(8, 4)
+  batasMinPct    Decimal?  @default(85.00) @map("batas_min_pct") @db.Decimal(6, 2)
+  batasMaksPct   Decimal?  @default(115.00) @map("batas_maks_pct") @db.Decimal(6, 2)
+  flag           QcFlag?   @default(pass)
+  statusQc       QcStatus? @default(pending) @map("status_qc")
+  reviewerId     Int?      @map("reviewer_id")
+  catatanReview  String?   @map("catatan_review") @db.Text
+  tanggalUji     DateTime? @map("tanggal_uji") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  sample      Sample             @relation(fields: [sampelId], references: [id], onDelete: Cascade)
+  preparation SamplePreparation? @relation(fields: [preparasiId], references: [id], onDelete: SetNull)
+  reviewer    User?              @relation("QcReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([sampelId])
+  @@index([preparasiId])
+  @@index([reviewerId])
+  @@map("qc_sampel")
+}
+
+// ------------------------------------------------------------
+// BILLING, INVOICING & LAB TARIFFS
+// ------------------------------------------------------------
+enum InvoiceStatus {
+  draft
+  diterbitkan
+  lunas
+  dibatalkan
+
+  @@map("invoice_status")
+}
+
+model Invoice {
+  id                Int            @id @default(autoincrement())
+  nomorInvoice      String         @unique(map: "nomor_invoice") @map("nomor_invoice") @db.VarChar(50)
+  penerimaanId      Int?           @map("penerimaan_id")
+  klien             String         @db.VarChar(150)
+  alamatKlien       String?        @map("alamat_klien") @db.Text
+  tanggalInvoice    DateTime       @map("tanggal_invoice") @db.Date
+  tanggalJatuhTempo DateTime?      @map("tanggal_jatuh_tempo") @db.Date
+  subtotal          Decimal?       @default(0.00) @db.Decimal(15, 2)
+  diskonPct         Decimal?       @default(0.00) @map("diskon_pct") @db.Decimal(5, 2)
+  diskonNominal     Decimal?       @default(0.00) @map("diskon_nominal") @db.Decimal(15, 2)
+  ppnPct            Decimal?       @default(11.00) @map("ppn_pct") @db.Decimal(5, 2)
+  ppnNominal        Decimal?       @default(0.00) @map("ppn_nominal") @db.Decimal(15, 2)
+  total             Decimal?       @default(0.00) @db.Decimal(15, 2)
+  status            InvoiceStatus? @default(draft)
+  catatan           String?        @db.Text
+  dibuatOleh        Int?           @map("dibuat_oleh")
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt         DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+
+  receipt    SampleReceipt? @relation(fields: [penerimaanId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_ibfk_1")
+  creator    User?          @relation(fields: [dibuatOleh], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_ibfk_2")
+  items      InvoiceItem[]
+
+  @@index([dibuatOleh], map: "dibuat_oleh")
+  @@index([penerimaanId], map: "penerimaan_id")
+  @@map("invoice")
+}
+
+model InvoiceItem {
+  id          Int         @id @default(autoincrement())
+  invoiceId   Int         @map("invoice_id")
+  deskripsi   String      @db.VarChar(250)
+  sampelId    Int?        @map("sampel_id")
+  tarifId     Int?        @map("tarif_id")
+  qty         Int?        @default(1)
+  hargaSatuan Decimal?    @default(0) @map("harga_satuan") @db.Decimal(12, 0)
+  subtotal    Decimal?    @default(0) @db.Decimal(14, 0)
+  catatan     String?     @db.VarChar(200)
+
+  invoice Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "invoice_item_ibfk_1")
+  sample  Sample?     @relation(fields: [sampelId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_item_ibfk_2")
+  tariff  TestTariff? @relation(fields: [tarifId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "invoice_item_ibfk_3")
+
+  @@index([invoiceId], map: "invoice_id")
+  @@index([sampelId], map: "sampel_id")
+  @@index([tarifId], map: "tarif_id")
+  @@map("invoice_item")
+}
+
+model TestTariff {
+  id           Int           @id @default(autoincrement())
+  nama         String        @db.VarChar(150)
+  metode       String?       @db.VarChar(50)
+  parameter    String?       @db.VarChar(100)
+  harga        Decimal       @default(0) @db.Decimal(12, 0)
+  satuan       String?       @default("per parameter") @db.VarChar(50)
+  aktif        Boolean?      @default(true)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamp(0)
+
+  invoiceItems InvoiceItem[]
+
+  @@map("tarif_pengujian")
+}
+
+// ------------------------------------------------------------
+// CLIENT ACCESS, PORTAL & ONLINE SAMPLE SUBMISSIONS (SSF)
+// ------------------------------------------------------------
+enum SubmissionStatus {
+  pending
+  diterima
+  diproses
+  ditolak
+
+  @@map("submission_sampel_status")
+}
+
+enum ClientAccessStatus {
+  aktif
+  selesai
+  ditutup
+
+  @@map("client_access_status")
+}
+
+model SampleSubmission {
+  id              Int               @id @default(autoincrement())
+  nomorSubmission String            @unique(map: "nomor_submission") @map("nomor_submission") @db.VarChar(30)
+  klien           String            @db.VarChar(150)
+  kontakPerson    String?           @map("kontak_person") @db.VarChar(150)
+  email           String            @db.VarChar(150)
+  telepon         String?           @db.VarChar(50)
+  alamat          String?           @db.Text
+  poReferensi     String?           @map("po_referensi") @db.VarChar(100)
+  instruksiKhusus String?           @map("instruksi_khusus") @db.Text
+  catatan         String?           @db.Text
+  status          SubmissionStatus? @default(pending)
+  tanggalSubmit   DateTime          @default(now()) @map("tanggal_submit") @db.Timestamp(0)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamp(0)
+
+  clientAccesses ClientAccess[]
+  details        SampleSubmissionDetail[]
+
+  @@map("submission_sampel")
+}
+
+model SampleSubmissionDetail {
+  id            Int              @id @default(autoincrement())
+  submissionId  Int              @map("submission_id")
+  jenisMaterial String           @map("jenis_material") @db.VarChar(100)
+  beratGram     Decimal?         @map("berat_gram") @db.Decimal(10, 3)
+  metodeUji     String?          @map("metode_uji") @db.VarChar(50)
+  parameter     String?          @db.VarChar(100)
+  keterangan    String?          @db.Text
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamp(0)
+
+  submission SampleSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_submission_detail_submission")
+
+  @@index([submissionId], map: "fk_submission_detail_submission")
+  @@map("submission_sampel_detail")
+}
+
+model ClientAccess {
+  id           Int                 @id @default(autoincrement())
+  penggunaId   Int                 @map("pengguna_id")
+  submissionId Int?                @map("submission_id")
+  penerimaanId Int?                @map("penerimaan_id")
+  kodeAkses    String              @unique(map: "kode_akses") @map("kode_akses") @db.VarChar(40)
+  klien        String              @db.VarChar(150)
+  email        String?             @db.VarChar(150)
+  status       ClientAccessStatus? @default(aktif)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt    DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+
+  user       User              @relation(fields: [penggunaId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "client_access_ibfk_1")
+  submission SampleSubmission? @relation(fields: [submissionId], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "client_access_ibfk_2")
+  receipt    SampleReceipt?    @relation(fields: [penerimaanId], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "client_access_ibfk_3")
+
+  @@index([penerimaanId], map: "penerimaan_id")
+  @@index([penggunaId], map: "pengguna_id")
+  @@index([submissionId], map: "submission_id")
+  @@map("client_access")
+}
+
+
+
