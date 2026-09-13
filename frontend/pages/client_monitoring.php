@@ -96,7 +96,7 @@ require_once __DIR__ . '/../includes/header.php';
     50% { box-shadow: 0 0 0 8px rgba(245,158,11,0); }
 }
 
-/* Progress bar */
+
 .progress-track{width:100%;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:10px}
 .progress-fill{height:100%;background:linear-gradient(90deg, #f59e0b, #10b981);border-radius:3px;transition:width .5s ease}
 
