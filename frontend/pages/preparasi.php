@@ -17,7 +17,7 @@ if (!canAccessPreparasi()) {
 }
 
 $pageTitle = 'Preparasi Sampel';
-$isEditable = isAnalis(); // Hanya analis yang bisa edit
+$isEditable = isAnalis(); 
 $isReadOnly = !$isEditable;
 
 $msg  = $_SESSION['msg'] ?? ''; unset($_SESSION['msg']);
