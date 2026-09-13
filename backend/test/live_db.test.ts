@@ -27,7 +27,7 @@ async function runLiveDbTests() {
     }
   }
 
-  // 1. Database Connectivity
+
   await testCase('Prisma dapat terkoneksi dan membaca database asli `labmineral`', async () => {
     const userCount = await prisma.user.count();
     assert(userCount > 0, `Harus menemukan data pengguna di database labmineral (ditemukan: ${userCount})`);
