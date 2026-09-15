@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Preparasi Sampel')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('preparasi', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('P1 Preparasi Sampel Laboratorium', 0, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- Flash Messages -->
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Error</div>
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sukses</div>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button type="button" class="tab-btn"
+                    th:classappend="${activeTab == 'daftar' ? 'active' : ''}"
+                    onclick="switchTab('daftar')">&#128221; Riwayat Preparasi</button>
+            <button type="button" class="tab-btn"
+                    th:classappend="${activeTab == 'input' ? 'active' : ''}"
+                    onclick="switchTab('input')">&#10133; Catat Preparasi Baru</button>
+        </div>
+
+        <!-- Tab 1: Riwayat Preparasi -->
+        <div id="tab-daftar" class="tab-pane" th:classappend="${activeTab == 'daftar' ? 'active' : ''}">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                    <div class="card-title" style="margin-bottom:0;">Riwayat Catatan Preparasi Sampel</div>
+                    <button class="btn btn-primary" onclick="switchTab('input')">+ Input Preparasi</button>
+                </div>
+
+                <div class="tbl-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Tgl Preparasi</th>
+                            <th>Kode Sampel</th>
+                            <th>Klien</th>
+                            <th>No. Work Order</th>
+                            <th>Metode Preparasi</th>
+                            <th>Faktor Pengenceran</th>
+                            <th>Vol Awal / Akhir</th>
+                            <th>QC Disiapkan</th>
+                            <th>Analis</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(prepList)}">
+                            <td colspan="9" style="text-align:center; color:var(--text3); padding:24px;">
+                                Belum ada riwayat preparasi sampel yang tercatat.
+                            </td>
+                        </tr>
+                        <tr th:each="p : ${prepList}">
+                            <td style="font-size:.78rem; color:var(--text3);"
+                                th:text="${p.tanggalPreparasi != null ? p.tanggalPreparasi : (p.createdAt != null and #strings.length(p.createdAt) >= 10 ? #strings.substring(p.createdAt, 0, 10) : (p.createdAt != null ? p.createdAt : '-'))}">2026-09-14</td>
+                            <td>
+                                <strong style="color:var(--text);" th:text="${p.sample != null ? p.sample.kodeSampel : ('ID #' + p.sampelId)}">SMP-001</strong>
+                                <div style="font-size:.68rem; color:var(--text3);" th:text="${p.sample != null ? p.sample.jenisMaterial : '-'}">Bijih Besi</div>
+                            </td>
+                            <td style="font-size:.8rem;" th:text="${p.sample != null ? p.sample.klien : '-'}">PT Klien</td>
+                            <td>
+                                <span th:if="${p.workOrder != null}" class="badge badge-info" th:text="${p.workOrder.nomorWo}">WO-001</span>
+                                <span th:unless="${p.workOrder != null}" style="color:var(--text3);">-</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-draft" th:text="${p.metodePreparasi}">destruksi_asam</span>
+                            </td>
+                            <td style="font-weight:600; color:var(--gold);" th:text="${p.faktorPengenceran} + 'x'">1.0x</td>
+                            <td style="font-size:.78rem; color:var(--text2);"
+                                th:text="${(p.volumeAwalMl != null ? p.volumeAwalMl : '-') + ' mL / ' + (p.volumeAkhirMl != null ? p.volumeAkhirMl : '-') + ' mL'}">10 / 50 mL</td>
+                            <td style="font-size:.72rem;">
+                                <span th:if="${p.blankoDisiapkan}" style="color:var(--green); margin-right:4px;">[Blanko]</span>
+                                <span th:if="${p.standarDisiapkan}" style="color:var(--gold); margin-right:4px;">[CRM]</span>
+                                <span th:if="${p.spikeDisiapkan}" style="color:var(--yellow); margin-right:4px;">[Spike]</span>
+                                <span th:if="${p.duplikatDisiapkan}" style="color:var(--text2);">[Duplikat]</span>
+                                <span th:if="${!p.blankoDisiapkan && !p.standarDisiapkan && !p.spikeDisiapkan && !p.duplikatDisiapkan}" style="color:var(--text3);">-</span>
+                            </td>
+                            <td style="font-size:.8rem;" th:text="${p.analyst != null ? p.analyst.nama : '-'}">Analis</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Input Preparasi -->
+        <div id="tab-input" class="tab-pane" th:classappend="${activeTab == 'input' ? 'active' : ''}">
+            <div class="card" style="max-width:850px;">
+                <div class="card-title">&#128260; Formulir Pencatatan Preparasi Sampel</div>
+
+                <form th:action="@{/preparasi/simpan}" method="POST">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="form-group">
+                            <label>Mode Input</label>
+                            <select name="mode_input" id="modeInputSelect" class="form-control" onchange="toggleModeInput(this.value)">
+                                <option value="single">Single Sampel</option>
+                                <option value="wo">Batch Work Order</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tanggal Pelaksanaan Preparasi</label>
+                            <input type="date" name="tanggal_preparasi" class="form-control" th:value="${#calendars.format(#calendars.createNow(), 'yyyy-MM-dd')}"/>
+                        </div>
+                    </div>
+
+                    <!-- Single Mode: Target Sampel -->
+                    <div id="fieldSingleSampel" class="form-group" style="margin-bottom:16px;">
+                        <label>Pilih Sampel Laboratorium</label>
+                        <select name="sampel_id" class="form-control">
+                            <option value="">-- Pilih Sampel --</option>
+                            <option th:each="s : ${sampelList}" th:value="${s.id}"
+                                    th:text="${s.kodeSampel + ' — ' + s.jenisMaterial + ' (' + s.klien + ')'}"></option>
+                        </select>
+                    </div>
+
+                    <!-- WO Mode: Target Work Order -->
+                    <div id="fieldWoBatch" class="form-group" style="display:none; margin-bottom:16px;">
+                        <label>Pilih Batch Work Order Aktif</label>
+                        <select name="work_order_id" class="form-control">
+                            <option value="">-- Pilih Work Order --</option>
+                            <option th:each="w : ${woAktif}" th:value="${w.id}"
+                                    th:text="${w.nomorWo + ' — ' + (w.metode != null ? w.metode : 'Uji') + ' (' + (w.parameter != null ? w.parameter : 'Parameter') + ')'}"></option>
+                        </select>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="form-group">
+                            <label>Metode Preparasi <span style="color:var(--red)">*</span></label>
+                            <select name="metode_preparasi" class="form-control" required>
+                                <option th:each="m : ${metodeOpts}" th:value="${m}" th:text="${#strings.toUpperCase(m)}">DESTRUKSI_ASAM</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Faktor Pengenceran</label>
+                            <input type="number" step="0.01" name="faktor_pengenceran" class="form-control" value="1.0" required/>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="form-group">
+                            <label>Volume Awal (mL / g)</label>
+                            <input type="number" step="0.01" name="volume_awal_ml" class="form-control" placeholder="Contoh: 5.0"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Volume Akhir (mL)</label>
+                            <input type="number" step="0.01" name="volume_akhir_ml" class="form-control" placeholder="Contoh: 50.0"/>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="form-group">
+                            <label>Suhu Ruang (&deg;C)</label>
+                            <input type="number" step="0.1" name="suhu_ruang" class="form-control" placeholder="Contoh: 24.5"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Kelembaban (% RH)</label>
+                            <input type="number" step="0.1" name="kelembaban" class="form-control" placeholder="Contoh: 55"/>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label>Prosedur Kerja &amp; Catatan Teknis</label>
+                        <textarea name="prosedur" class="form-control" rows="2" placeholder="Tuliskan catatan teknis preparasi sampel..."></textarea>
+                    </div>
+
+                    <!-- QC Flags Checkbox -->
+                    <div style="background:var(--bg3); padding:14px; border-radius:8px; margin-bottom:20px; border:1px solid var(--border);">
+                        <label style="display:block; font-size:.82rem; font-weight:600; color:var(--gold); margin-bottom:8px;">
+                            Kelengkapan Sampel Kontrol Mutu (QC) Disiapkan:
+                        </label>
+                        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; font-size:.8rem;">
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="checkbox" name="blanko_disiapkan" value="true"/> Blanko Reagen
+                            </label>
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="checkbox" name="standar_disiapkan" value="true"/> Standar Acuan (CRM)
+                            </label>
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="checkbox" name="spike_disiapkan" value="true"/> Spike Matrix
+                            </label>
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="checkbox" name="duplikat_disiapkan" value="true"/> Duplikat Sampel
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" class="btn btn-secondary" onclick="switchTab('daftar')">Batal</button>
+                        <button type="submit" class="btn btn-primary">&#128190; Simpan Catatan Preparasi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+<script>
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+    const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabName));
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const pane = document.getElementById('tab-' + tabName);
+    if (pane) pane.classList.add('active');
+}
+
+function toggleModeInput(val) {
+    const fieldSingle = document.getElementById('fieldSingleSampel');
+    const fieldWo = document.getElementById('fieldWoBatch');
+    if (val === 'wo') {
+        fieldSingle.style.display = 'none';
+        fieldWo.style.display = 'block';
+    } else {
+        fieldSingle.style.display = 'block';
+        fieldWo.style.display = 'none';
+    }
+}
+</script>
+
+</body>
+</html>

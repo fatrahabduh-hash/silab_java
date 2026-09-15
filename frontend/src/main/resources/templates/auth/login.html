@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Login — Aispektra Laboratory</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}"/>
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at center, #0f2b18 0%, #061109 100%);
+        }
+        .login-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 38px 34px;
+            width: 380px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+        }
+        .login-logo {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .login-logo h1 {
+            color: var(--gold);
+            font-size: 1.35rem;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+        .login-logo p {
+            color: var(--text3);
+            font-size: .8rem;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-size: .8rem;
+            color: var(--text2);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 11px 14px;
+            border-radius: 8px;
+            font-size: .9rem;
+            outline: none;
+            transition: 0.2s border-color;
+        }
+        .form-group input:focus {
+            border-color: var(--green);
+        }
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--gold), var(--gold2));
+            color: #1a0f00;
+            border: none;
+            border-radius: 8px;
+            font-size: .92rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: 0.2s opacity, 0.2s transform;
+        }
+        .btn-login:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+        .alert-error {
+            background: #3d1010;
+            color: #ff7675;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: .82rem;
+            margin-bottom: 16px;
+            border-left: 4px solid var(--red);
+        }
+        .alert-success {
+            background: #14351d;
+            color: #2ecc71;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: .82rem;
+            margin-bottom: 16px;
+            border-left: 4px solid var(--green);
+        }
+        .login-footer {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: .75rem;
+            color: var(--text3);
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-box">
+    <div class="login-logo">
+        <h1>&#9879; AISPEKTRA LABORATORY</h1>
+        <p>Sistem Informasi Pengujian Mineral & Logam</p>
+    </div>
+
+    <div th:if="${errorMessage}" class="alert-error" th:text="${errorMessage}">
+        Terjadi kesalahan saat masuk.
+    </div>
+
+    <div th:if="${successMessage}" class="alert-success" th:text="${successMessage}">
+        Pesan sukses.
+    </div>
+
+    <form th:action="@{/login}" method="POST">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" placeholder="Masukkan username" autofocus required/>
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="Masukkan password" required/>
+        </div>
+        <button type="submit" class="btn-login">&#128274; Masuk ke Sistem</button>
+    </form>
+
+    <div class="login-footer">
+        <p>LabMineral Pro Enterprise Edition &bull; v2.0</p>
+    </div>
+</div>
+
+</body>
+</html>

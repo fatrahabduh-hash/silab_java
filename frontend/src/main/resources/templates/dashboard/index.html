@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Dashboard')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('dashboard', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('Dashboard Operasional Laboratorium', ${alertCount}, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- Welcome Banner -->
+        <div class="card" style="background: linear-gradient(135deg, #112b18 0%, #163820 100%); margin-bottom: 20px; border-left: 4px solid var(--gold);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <h2 style="color:var(--gold); font-size:1.3rem; margin-bottom:4px;"
+                        th:text="'Selamat ' + ${sapaan} + ', ' + ${userNama} + '!'">Selamat Datang!</h2>
+                    <p style="color:var(--text2); font-size:.85rem;">
+                        Sistem Informasi Pengujian &amp; Manajemen Mutu Laboratorium Mineral &bull; Status operasional sistem berjalan normal.
+                    </p>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <a th:href="@{/penerimaan}" class="btn btn-primary" style="font-size:.8rem;">+ Penerimaan Baru</a>
+                    <a th:href="@{/work-order?tab=buat}" class="btn btn-secondary" style="font-size:.8rem;">+ Buat Work Order</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+            <div class="stat-card">
+                <div class="val" th:text="${sampleTotal != null ? sampleTotal : 0}">0</div>
+                <div class="lbl">Total Sampel Masuk</div>
+                <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+                    <div style="flex:1; background:var(--bg3); height:6px; border-radius:3px; overflow:hidden;">
+                        <div th:style="'background:var(--green); height:100%; width:' + ${pctSelesai} + '%;'"></div>
+                    </div>
+                    <span style="font-size:.7rem; color:var(--text3);" th:text="${pctSelesai} + '% Selesai'">0%</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="val" style="color:var(--gold);" th:text="${totalWoAktif != null ? totalWoAktif : 0}">0</div>
+                <div class="lbl">Work Order Aktif</div>
+                <div style="margin-top:8px; font-size:.72rem; color:var(--text3);">
+                    Sedang berjalan di meja analis
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="val" style="color:var(--yellow);" th:text="${totalKritis != null ? totalKritis : 0}">0</div>
+                <div class="lbl">Reagen Stok Kritis</div>
+                <div style="margin-top:8px; font-size:.72rem; color:var(--text3);">
+                    Mendekati batas minimum
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="val" style="color:var(--red);" th:text="${totalAlatMasalah != null ? totalAlatMasalah : 0}">0</div>
+                <div class="lbl">Alat Perlu Perhatian</div>
+                <div style="margin-top:8px; font-size:.72rem; color:var(--text3);">
+                    Status maintenance / rusak
+                </div>
+            </div>
+        </div>
+
+        <!-- 2 Column Layout -->
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
+
+            <!-- Left Col: Recent Receipts & Active WO -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+
+                <!-- Recent Penerimaan -->
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                        <div class="card-title" style="margin-bottom:0;">&#128230; Penerimaan Sampel Terbaru</div>
+                        <a th:href="@{/penerimaan}" style="color:var(--gold); font-size:.75rem; text-decoration:none;">Lihat Semua &rarr;</a>
+                    </div>
+                    <div class="tbl-wrap">
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>No. Penerimaan</th>
+                                <th>Klien</th>
+                                <th>Tgl Terima</th>
+                                <th>Jumlah</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:if="${#lists.isEmpty(recentReceipts)}">
+                                <td colspan="5" style="text-align:center; color:var(--text3); padding:20px;">Belum ada data penerimaan sampel.</td>
+                            </tr>
+                            <tr th:each="r : ${recentReceipts}">
+                                <td>
+                                    <strong style="color:var(--text);" th:text="${r.nomorPenerimaan}">REC-001</strong>
+                                </td>
+                                <td th:text="${r.klien}">PT Mineral Nusantara</td>
+                                <td style="font-size:.78rem; color:var(--text3);" th:text="${r.formattedTanggal}">-</td>
+                                <td><span class="badge badge-info" th:text="${r.jumlahSampel != null ? r.jumlahSampel : 0} + ' sampel'">0 sampel</span></td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${r.status == 'selesai' ? 'badge-lulus' : (r.status == 'proses' ? 'badge-pending' : 'badge-draft')}"
+                                          th:text="${r.status != null ? #strings.toUpperCase(r.status) : 'DRAFT'}">DRAFT</span>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Active Work Orders -->
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                        <div class="card-title" style="margin-bottom:0;">&#128203; Work Order Berjalan</div>
+                        <a th:href="@{/work-order}" style="color:var(--gold); font-size:.75rem; text-decoration:none;">Kelola WO &rarr;</a>
+                    </div>
+                    <div class="tbl-wrap">
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Nomor WO</th>
+                                <th>Metode</th>
+                                <th>Parameter</th>
+                                <th>Prioritas</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:if="${#lists.isEmpty(activeWo)}">
+                                <td colspan="5" style="text-align:center; color:var(--text3); padding:20px;">Tidak ada Work Order aktif saat ini.</td>
+                            </tr>
+                            <tr th:each="w : ${activeWo}">
+                                <td>
+                                    <strong style="color:var(--gold);" th:text="${w.nomorWo}">WO-001</strong>
+                                </td>
+                                <td th:text="${w.metode != null ? w.metode : '-'}">XRF</td>
+                                <td th:text="${w.parameter != null ? w.parameter : '-'}">Fe, SiO2</td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="${w.prioritas == 'urgent' ? 'badge-tlulus' : (w.prioritas == 'tinggi' ? 'badge-pending' : 'badge-draft')}"
+                                          th:text="${#strings.toUpperCase(w.prioritas != null ? w.prioritas : 'NORMAL')}">NORMAL</span>
+                                </td>
+                                <td><span class="badge badge-lulus" th:text="${w.status != null ? #strings.toUpperCase(w.status) : 'AKTIF'}">AKTIF</span></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Col: Alerts & Equipment & Shortcuts -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+
+                <!-- Alert Bahan Kritis -->
+                <div class="card">
+                    <div class="card-title" style="color:var(--yellow); font-size:.9rem; display:flex; align-items:center; gap:6px;">
+                        <span>&#9888;</span> Inventaris Reagen Kritis
+                    </div>
+                    <div th:if="${#lists.isEmpty(alertBahan)}" style="color:var(--text3); font-size:.8rem; padding:10px 0;">
+                        Semua stok bahan laboratorium dalam batas aman.
+                    </div>
+                    <div th:unless="${#lists.isEmpty(alertBahan)}" style="display:flex; flex-direction:column; gap:10px;">
+                        <div th:each="b : ${alertBahan}" style="background:var(--bg3); padding:8px 12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-weight:600; font-size:.82rem; color:var(--text);" th:text="${b.nama}">HCl 37%</div>
+                                <div style="font-size:.7rem; color:var(--text3);" th:text="'Min: ' + ${b.stokMinimum} + ' ' + ${b.satuan}">Min: 5 Liter</div>
+                            </div>
+                            <span class="badge"
+                                  th:classappend="${b.statusStokBadge == 'kritis' ? 'badge-tlulus' : 'badge-pending'}"
+                                  th:text="${b.stok} + ' ' + ${b.satuan}">1 Liter</span>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px; text-align:right;">
+                        <a th:href="@{/bahan}" style="color:var(--gold); font-size:.75rem; text-decoration:none;">Buka Inventaris &rarr;</a>
+                    </div>
+                </div>
+
+                <!-- Status Peralatan Lab -->
+                <div class="card">
+                    <div class="card-title" style="font-size:.9rem; display:flex; align-items:center; gap:6px;">
+                        <span>&#9881;</span> Status Instrumen Utama
+                    </div>
+                    <div th:if="${#lists.isEmpty(alatUtama)}" style="color:var(--text3); font-size:.8rem; padding:10px 0;">
+                        Data instrumen belum terdaftar.
+                    </div>
+                    <div th:unless="${#lists.isEmpty(alatUtama)}" style="display:flex; flex-direction:column; gap:8px;">
+                        <div th:each="a : ${alatUtama}" style="background:var(--bg3); padding:8px 12px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-weight:600; font-size:.82rem; color:var(--text);" th:text="${a.nama}">Spectrometer AAS</div>
+                                <div style="font-size:.7rem; color:var(--text3);" th:text="${a.kodeAlat}">EQ-AAS-01</div>
+                            </div>
+                            <span class="badge"
+                                  th:classappend="${a.status == 'tersedia' ? 'badge-lulus' : (a.status == 'maintenance' ? 'badge-pending' : 'badge-tlulus')}"
+                                  th:text="${a.status != null ? #strings.toUpperCase(a.status) : 'TERSEDIA'}">TERSEDIA</span>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px; text-align:right;">
+                        <a th:href="@{/peralatan}" style="color:var(--gold); font-size:.75rem; text-decoration:none;">Kelola Alat &rarr;</a>
+                    </div>
+                </div>
+
+                <!-- Navigasi Cepat -->
+                <div class="card">
+                    <div class="card-title" style="font-size:.85rem;">&#9889; Pintasan Modul</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <a th:href="@{/preparasi}" class="btn btn-secondary" style="font-size:.75rem; text-align:center;">&#128260; Preparasi</a>
+                        <a th:href="@{/pengujian}" class="btn btn-secondary" style="font-size:.75rem; text-align:center;">&#128300; Pengujian</a>
+                        <a th:href="@{/qc}" class="btn btn-secondary" style="font-size:.75rem; text-align:center;">&#10003; QC Mutu</a>
+                        <a th:href="@{/invoice}" class="btn btn-secondary" style="font-size:.75rem; text-align:center;">&#128179; Invoice</a>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+</body>
+</html>

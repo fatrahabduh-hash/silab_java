@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Laporan & Ekspor')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('laporan', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('Laporan Analisis &amp; Dokumen CoA', 0, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- 3 Grid Action Cards -->
+        <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+            <div class="card" style="text-align:center; padding:24px;">
+                <div style="font-size:2.2rem; margin-bottom:8px;">&#128196;</div>
+                <div style="color:var(--gold); font-weight:700; font-size:1rem; margin-bottom:4px;">Sertifikat Analisis (CoA)</div>
+                <div style="font-size:.78rem; color:var(--text3); margin-bottom:16px;">Certificate of Analysis resmi pengujian laboratorium</div>
+                <button onclick="window.print()" class="btn btn-secondary" style="font-size:.8rem;">&#128424; Cetak Halaman Laporan</button>
+            </div>
+
+            <div class="card" style="text-align:center; padding:24px;">
+                <div style="font-size:2.2rem; margin-bottom:8px;">&#128202;</div>
+                <div style="color:var(--gold); font-weight:700; font-size:1rem; margin-bottom:4px;">Kepatuhan Mutu Pengujian</div>
+                <div style="font-size:1.6rem; font-weight:700; color:var(--green); margin:8px 0;" th:text="${pctLulus} + '% Lulus'">0% Lulus</div>
+                <div style="font-size:.78rem; color:var(--text3);" th:text="${totalUji} + ' total pengujian yang telah selesai'">0 total pengujian</div>
+            </div>
+
+            <div class="card" style="text-align:center; padding:24px;">
+                <div style="font-size:2.2rem; margin-bottom:8px;">&#9989;</div>
+                <div style="color:var(--gold); font-weight:700; font-size:1rem; margin-bottom:4px;">Total Sampel Selesai</div>
+                <div style="font-size:1.6rem; font-weight:700; color:var(--gold); margin:8px 0;" th:text="${sampelSelesai}">0</div>
+                <div style="font-size:.78rem; color:var(--text3);">Sampel siap diterbitkan sertifikatnya</div>
+            </div>
+        </div>
+
+        <!-- Quick Link Klien -->
+        <div class="card" style="margin-bottom:20px;">
+            <div class="card-title">&#128101; Filter Cepat Pelanggan / Klien Laboratorium</div>
+            <div th:if="${#lists.isEmpty(klienList)}" style="color:var(--text3); font-size:.8rem; padding:8px 0;">
+                Belum ada data klien terdaftar.
+            </div>
+            <div th:unless="${#lists.isEmpty(klienList)}" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+                <a th:each="k : ${klienList}"
+                   th:href="@{'/pengujian?search=' + ${k}}"
+                   style="background:var(--bg3); border:1px solid var(--border); color:var(--text2); padding:6px 14px; border-radius:20px; font-size:.78rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                    <span>&#128196;</span> <span th:text="${k}">PT Klien</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Recent Test Results (CoA Ready) -->
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <div class="card-title" style="margin-bottom:0;">Hasil Pengujian Terbaru Siap Sertifikasi</div>
+                <a th:href="@{/pengujian}" style="color:var(--gold); font-size:.75rem; text-decoration:none;">Lihat Seluruh Data &rarr;</a>
+            </div>
+
+            <div class="tbl-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Kode Uji</th>
+                        <th>Kode Sampel</th>
+                        <th>Klien</th>
+                        <th>Parameter</th>
+                        <th>Nilai Terkoreksi</th>
+                        <th>Satuan</th>
+                        <th>Metode</th>
+                        <th>Kesimpulan</th>
+                        <th>Tanggal Uji</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${#lists.isEmpty(hasilTerbaru)}">
+                        <td colspan="9" style="text-align:center; color:var(--text3); padding:24px;">Belum ada data hasil pengujian.</td>
+                    </tr>
+                    <tr th:each="h : ${hasilTerbaru}">
+                        <td><strong style="color:var(--gold);" th:text="${h.kodeUji != null ? h.kodeUji : ('U-' + h.id)}">U-001</strong></td>
+                        <td th:text="${h.sample != null ? h.sample.kodeSampel : '-'}">SMP-001</td>
+                        <td th:text="${h.sample != null ? h.sample.klien : '-'}">PT Klien</td>
+                        <td><span class="badge badge-info" th:text="${h.parameter}">Fe</span></td>
+                        <td><strong style="color:var(--text);" th:text="${h.nilaiTerkoreksi != null ? h.nilaiTerkoreksi : h.nilai}">45.5</strong></td>
+                        <td th:text="${h.satuan != null ? h.satuan : '%'}">%</td>
+                        <td th:text="${h.metode != null ? h.metode : 'AAS'}">AAS</td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${h.kesimpulan == 'lulus' ? 'badge-lulus' : (h.kesimpulan == 'tidak_lulus' ? 'badge-tlulus' : 'badge-pending')}"
+                                  th:text="${#strings.toUpperCase(h.kesimpulan != null ? h.kesimpulan : 'PENDING')}">LULUS</span>
+                        </td>
+                        <td style="font-size:.75rem; color:var(--text3);" th:text="${h.tanggalUji != null ? h.tanggalUji : '-'}">2026-09-14</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Portal Klien')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('client-portal', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('Portal Mandiri &amp; Pelacakan Sampel Klien', 0, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- Tracking Bar -->
+        <div class="card" style="margin-bottom:20px; background:linear-gradient(135deg, #112b18, #163d22);">
+            <div class="card-title" style="color:var(--gold);">&#128269; Pelacakan Cepat Status Pengujian Sampel</div>
+            <p style="font-size:.82rem; color:var(--text2); margin-bottom:14px;">
+                Masukkan Kode Akses Klien atau Nomor SSF untuk melihat status pengujian langsung dari sistem laboratorium.
+            </p>
+            <form th:action="@{/client-portal}" method="GET" style="display:flex; gap:10px; max-width:500px;">
+                <input type="text" name="track" class="form-control" placeholder="Contoh: ACC-2609-001 atau SUB-..." th:value="${trackCode}" required/>
+                <button type="submit" class="btn btn-primary">&#128269; Lacak</button>
+            </form>
+        </div>
+
+        <!-- Track Result if searched -->
+        <div th:if="${trackResult != null}" class="card" style="margin-bottom:20px; border:2px solid var(--gold);">
+            <div class="card-title">&#10003; Hasil Pelacakan: <span style="color:var(--gold);" th:text="${trackCode}"></span></div>
+            <div style="font-size:.85rem; color:var(--text); margin-bottom:10px;">
+                Klien: <strong th:text="${trackResult.path('klien').asText('-')}">PT Klien</strong> &bull;
+                Status Keseluruhan: <span class="badge badge-info" th:text="${trackResult.path('overallStatus').asText('Diproses')}">DIPROSES</span> &bull;
+                Kemajuan: <strong style="color:var(--gold);" th:text="${trackResult.path('overallProgress').asInt(0)} + '%'">0%</strong>
+            </div>
+        </div>
+
+        <!-- Sample List for Current Client -->
+        <div class="card">
+            <div class="card-title">&#128230; Daftar Sampel Uji Milik Anda</div>
+
+            <div th:if="${#lists.isEmpty(samples)}" style="color:var(--text3); text-align:center; padding:30px;">
+                Tidak ada sampel uji yang sedang diproses untuk akun Anda saat ini.
+            </div>
+
+            <div th:unless="${#lists.isEmpty(samples)}" style="display:grid; grid-template-columns:1fr; gap:16px;">
+                <div th:each="s : ${samples}" class="card" style="background:var(--bg3); border-left:4px solid var(--gold); margin-bottom:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+                        <div>
+                            <h3 style="color:var(--gold); font-size:1.05rem;" th:text="${s.kodeSampel}">SMP-001</h3>
+                            <div style="font-size:.78rem; color:var(--text3);"
+                                 th:text="${s.jenisMaterial + ' &bull; Ref Batch: ' + s.nomorPenerimaan + ' &bull; Tgl: ' + s.tanggalTerima}">Biji Besi</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <span class="badge"
+                                  th:classappend="${s.status == 'selesai' ? 'badge-lulus' : 'badge-pending'}"
+                                  th:text="${#strings.toUpperCase(s.currentStage)}">PENGUJIAN</span>
+                            <div style="font-size:.78rem; font-weight:700; color:var(--gold); margin-top:4px;" th:text="${s.progressPct} + '% Progres'">50% Progres</div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div style="background:var(--card); height:6px; border-radius:3px; overflow:hidden; margin-bottom:12px;">
+                        <div th:style="'background:linear-gradient(90deg, var(--green3), var(--green)); height:100%; width:' + ${s.progressPct} + '%;'"></div>
+                    </div>
+
+                    <!-- Hasil Uji parameter jika ada -->
+                    <div th:if="${!#lists.isEmpty(s.parameters)}" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+                        <span style="font-size:.72rem; color:var(--text3); margin-right:4px;">Hasil Terukur:</span>
+                        <span th:each="p : ${s.parameters}" class="badge badge-info" style="font-size:.72rem;" th:text="${p}">Fe: 45.2%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+</body>
+</html>

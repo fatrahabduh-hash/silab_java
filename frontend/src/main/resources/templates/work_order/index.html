@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head(${pageTitle})}"></head>
+<body>
+
+<!-- SIDEBAR -->
+<div th:replace="~{fragments/sidebar :: sidebar('work-order', ${userNama})}"></div>
+
+<!-- MAIN LAYOUT -->
+<div id="main">
+
+    <!-- TOPBAR -->
+    <div th:replace="~{fragments/header :: topbar(${pageTitle}, ${statUrgent}, ${userNama}, ${userRole})}"></div>
+
+    <!-- CONTENT -->
+    <div id="content">
+
+        <div class="sec-title">Work Order &amp; Penugasan Analisis</div>
+
+        <!-- ALERTS -->
+        <div th:if="${successMessage}" class="alert-box alert-green" style="margin-bottom:14px">
+            &#10003; <span th:text="${successMessage}">Pesan sukses</span>
+        </div>
+        <div th:if="${errorMessage}" class="alert-box alert-red" style="margin-bottom:14px">
+            &#9888; <span th:text="${errorMessage}">Pesan error</span>
+        </div>
+
+        <!-- STAT MINI CARDS -->
+        <div class="stat-mini" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+            <div class="smc" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div class="v yellow" style="font-size:1.5rem;font-weight:700;color:var(--yellow);" th:text="${statDraft}">0</div>
+                <div class="l" style="font-size:.7rem;color:var(--text3);margin-top:2px;">Draft / Belum Aktif</div>
+            </div>
+            <div class="smc" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div class="v gold" style="font-size:1.5rem;font-weight:700;color:var(--gold);" th:text="${statAktif}">0</div>
+                <div class="l" style="font-size:.7rem;color:var(--text3);margin-top:2px;">Sedang Berjalan</div>
+            </div>
+            <div class="smc" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div class="v red" style="font-size:1.5rem;font-weight:700;color:var(--red);" th:text="${statUrgent}">0</div>
+                <div class="l" style="font-size:.7rem;color:var(--text3);margin-top:2px;">Prioritas Urgent</div>
+            </div>
+            <div class="smc" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+                <div class="v" style="font-size:1.5rem;font-weight:700;color:var(--green);" th:text="${statSelesai}">0</div>
+                <div class="l" style="font-size:.7rem;color:var(--text3);margin-top:2px;">Selesai</div>
+            </div>
+        </div>
+
+        <!-- TABS -->
+        <div class="tabs no-print" style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);">
+            <button type="button" id="tabBtnDaftar" class="tab-btn"
+                    th:classappend="${activeTab == 'daftar' ? 'active' : ''}"
+                    style="padding:8px 18px;background:none;border:none;border-bottom:3px solid transparent;font-size:.82rem;cursor:pointer;font-weight:600;transition:.2s;margin-bottom:-1px;">
+                &#128203; Daftar Work Order
+            </button>
+            <button type="button" id="tabBtnBuat" class="tab-btn"
+                    th:classappend="${activeTab == 'buat' ? 'active' : ''}"
+                    style="padding:8px 18px;background:none;border:none;border-bottom:3px solid transparent;font-size:.82rem;cursor:pointer;font-weight:600;transition:.2s;margin-bottom:-1px;">
+                &#10133; Buat Work Order
+            </button>
+            <button type="button" id="tabBtnJadwal" class="tab-btn"
+                    th:classappend="${activeTab == 'jadwal' ? 'active' : ''}"
+                    style="padding:8px 18px;background:none;border:none;border-bottom:3px solid transparent;font-size:.82rem;cursor:pointer;font-weight:600;transition:.2s;margin-bottom:-1px;">
+                &#128197; Jadwal Instrumen
+            </button>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════
+             TAB 1: DAFTAR WO
+        ═══════════════════════════════════════════════════ -->
+        <div id="tab-daftar" class="tab-pane" th:style="${activeTab == 'daftar' ? 'display:block;' : 'display:none;'}">
+
+            <!-- Search & Filter -->
+            <form th:action="@{/work-order}" method="GET" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+                <input type="hidden" name="tab" value="daftar"/>
+                <input type="text" name="q" th:value="${search}"
+                       placeholder="&#128269; Cari nomor WO / nomor penerimaan / klien..."
+                       style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:6px;font-size:.8rem;outline:none"/>
+                <select name="fstatus" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:.8rem;outline:none">
+                    <option value="aktif_draft" th:selected="${fStatus == 'aktif_draft'}">Aktif &amp; Draft</option>
+                    <option value="semua" th:selected="${fStatus == 'semua'}">Semua Status</option>
+                    <option value="draft" th:selected="${fStatus == 'draft'}">Draft</option>
+                    <option value="aktif" th:selected="${fStatus == 'aktif'}">Aktif</option>
+                    <option value="selesai" th:selected="${fStatus == 'selesai'}">Selesai</option>
+                    <option value="dibatalkan" th:selected="${fStatus == 'dibatalkan'}">Dibatalkan</option>
+                </select>
+                <button type="submit" class="btn btn-green btn-sm">Cari</button>
+            </form>
+
+            <div th:if="${#lists.isEmpty(woList)}" style="text-align:center;padding:30px;color:var(--text3);background:var(--bg3);border-radius:8px;border:1px solid var(--border);">
+                Belum ada work order yang terdaftar.
+            </div>
+
+            <div th:each="w : ${woList}" class="wo-card" style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;">
+                <!-- Header -->
+                <div class="wo-header btn-toggle-wo" th:data-id="${w.id}"
+                     style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg3);cursor:pointer;flex-wrap:wrap;">
+                    <span class="wo-no" style="font-size:.9rem;font-weight:700;color:var(--gold);font-family:monospace;" th:text="${w.nomorWo}">WO-2609-001</span>
+
+                    <span class="badge" th:classappend="${w.prioritasClass}" th:text="${#strings.toUpperCase(w.prioritas)}">NORMAL</span>
+                    <span class="badge" th:classappend="${w.statusBadgeClass}" th:text="${w.statusLabel}">Aktif</span>
+
+                    <span class="badge" style="background:#1a2e0a;color:#a8d58a;border:1px solid #2e5018;font-family:monospace;"
+                          th:if="${w.nomorPenerimaan != null}" th:text="'&#128230; ' + ${w.nomorPenerimaan}">&#128230; REC-2609-001</span>
+
+                    <span class="badge" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);"
+                          th:text="${w.jumlahSampel} + ' sampel'">1 sampel</span>
+
+                    <span style="color:var(--text3);font-size:.78rem" th:text="${w.klienBatch}">PT. Freeport</span>
+
+                    <!-- Timeline Status Mini -->
+                    <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:0.65rem;color:var(--text3);" th:text="${w.status == 'selesai' ? '&#10003; Selesai' : (w.status == 'aktif' ? '&#9654; Berjalan' : 'Draft')}">Aktif</span>
+                        <span style="color:var(--text3);font-size:.8rem;" th:id="'wo-ico-' + ${w.id}">&#9660;</span>
+                    </div>
+                </div>
+
+                <!-- Body (Accordion) -->
+                <div th:id="'wo-body-' + ${w.id}" class="wo-body" style="display:none;padding:16px;border-top:1px solid var(--border);">
+
+                    <!-- Sampel Chips -->
+                    <div th:if="${not #lists.isEmpty(w.safeSamples) and w.status != 'selesai'}" style="margin-bottom:14px">
+                        <div style="font-size:.7rem;color:var(--text3);margin-bottom:6px">&#128300; Sampel dalam Work Order ini:</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                            <span th:each="sc : ${w.safeSamples}" class="badge" style="background:#162e1a;color:var(--green);border:1px solid var(--green3);"
+                                  th:text="${sc.sample != null ? sc.sample.kodeSampel + ' (' + sc.sample.jenisMaterial + ')' : 'Sampel #' + sc.sampelId}">
+                                S-2609-001 (Bijih Emas)
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;font-size:.8rem;">
+                        <div>
+                            <div style="font-size:.68rem;color:var(--text3);margin-bottom:2px;">Analis Ditugaskan</div>
+                            <div style="color:var(--text);font-weight:600;" th:text="${w.namaAnalis}">Administrator Lab</div>
+                        </div>
+                        <div>
+                            <div style="font-size:.68rem;color:var(--text3);margin-bottom:2px;">Instrumen / Alat</div>
+                            <div style="color:var(--text);" th:text="${w.kodeAlat != null ? w.kodeAlat + ' — ' + w.namaAlat : '—'}">AAS-01 — AAS PinAAcle</div>
+                        </div>
+                        <div>
+                            <div style="font-size:.68rem;color:var(--text3);margin-bottom:2px;">Metode Analisis</div>
+                            <div style="color:var(--text);" th:text="${w.metode != null ? w.metode : '—'}">AAS</div>
+                        </div>
+                        <div>
+                            <div style="font-size:.68rem;color:var(--text3);margin-bottom:2px;">Parameter Uji</div>
+                            <div style="color:var(--text);" th:text="${w.parameter != null ? w.parameter : '—'}">Au, Ag, Cu</div>
+                        </div>
+                        <div>
+                            <div style="font-size:.68rem;color:var(--text3);margin-bottom:2px;">Jadwal Mulai</div>
+                            <div style="color:var(--text);" th:text="${w.formattedJadwalMulai}">14/09/2026 09:00</div>
+                        </div>
+                        <div>
+                            <div style="font-size:.68rem;color:var(--text3);margin-bottom:2px;">Jadwal Selesai</div>
+                            <div style="color:var(--text);" th:text="${w.formattedJadwalSelesai}">14/09/2026 17:00</div>
+                        </div>
+                    </div>
+
+                    <div th:if="${w.catatan != null and !w.catatan.isBlank()}" style="margin-top:12px;font-size:.78rem;color:var(--yellow);"
+                         th:text="'&#128221; Catatan: ' + ${w.catatan}">
+                        Catatan instruksi
+                    </div>
+
+                    <!-- Action buttons -->
+                    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px;">
+                        <form th:if="${w.status == 'draft'}" method="POST" th:action="@{/work-order/{id}/aktivasi(id=${w.id})}" style="display:inline">
+                            <button type="submit" class="btn btn-gold btn-sm">&#9654; Aktifkan WO</button>
+                        </form>
+
+                        <th:block th:if="${w.status == 'aktif'}">
+                            <a th:href="@{/preparasi(wo_id=${w.id})}" class="btn btn-green btn-sm">&#128300; Input Preparasi</a>
+                            <a th:href="@{/pengujian(wo_id=${w.id}, tab='input')}" class="btn btn-gold btn-sm">&#128202; Input Hasil Uji</a>
+                            <form method="POST" th:action="@{/work-order/{id}/selesaikan(id=${w.id})}" style="display:inline"
+                                  onsubmit="return confirm('Tandai Work Order ini selesai?');">
+                                <button type="submit" class="btn btn-sm" style="background:var(--green3);color:#fff">&#10003; Tandai Selesai</button>
+                            </form>
+                        </th:block>
+
+                        <a th:if="${w.status == 'selesai'}" th:href="@{/qc(wo_id=${w.id})}" class="btn btn-sm"
+                           style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)">
+                            &#128300; Lihat QC Report
+                        </a>
+
+                        <form th:if="${w.status != 'selesai' and w.status != 'dibatalkan'}" method="POST"
+                              th:action="@{/work-order/{id}/batalkan(id=${w.id})}" style="display:inline"
+                              onsubmit="return confirm('Apakah Anda yakin ingin membatalkan work order ini?');">
+                            <button type="submit" class="btn btn-red btn-sm">&#10005; Batalkan</button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════
+             TAB 2: BUAT WO
+        ═══════════════════════════════════════════════════ -->
+        <div id="tab-buat" class="tab-pane" th:style="${activeTab == 'buat' ? 'display:block;' : 'display:none;'}">
+
+            <div class="grid2">
+                <div class="card">
+                    <div class="card-title">&#10133; Buat Work Order Baru</div>
+
+                    <!-- Mode Toggle -->
+                    <div style="display:flex;gap:8px;margin-bottom:16px;">
+                        <button type="button" id="modeBatchBtn" class="btn btn-sm btn-gold" style="font-size:0.78rem;">
+                            &#128230; Batch (per Penerimaan)
+                        </button>
+                        <button type="button" id="modeSingleBtn" class="btn btn-sm" style="font-size:0.78rem;background:var(--bg3);border:1px solid var(--border);color:var(--text3);">
+                            &#128300; Sampel Spesifik
+                        </button>
+                    </div>
+
+                    <form method="POST" th:action="@{/work-order/simpan}" id="formBuatWo">
+                        <input type="hidden" name="mode_wo" id="hiddenModeWo" value="batch"/>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nomor WO (Preview)</label>
+                                <input type="text" name="nomor_wo" th:value="${noAuto}" readonly="readonly"/>
+                            </div>
+                            <div class="form-group">
+                                <label>Prioritas</label>
+                                <select name="prioritas">
+                                    <option value="normal">Normal</option>
+                                    <option value="tinggi">Tinggi</option>
+                                    <option value="urgent">Urgent</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- PANEL MODE BATCH -->
+                        <div id="panelBatch">
+                            <div class="form-group" style="margin-bottom:10px">
+                                <label>Nomor Penerimaan (Batch) *</label>
+                                <select name="penerimaan_id" id="selPenerimaan">
+                                    <option value="">— Pilih batch penerimaan —</option>
+                                    <option th:each="rec : ${penerimaanAntri}"
+                                            th:value="${rec.penerimaanId}"
+                                            th:data-klien="${rec.klien}"
+                                            th:data-jml="${rec.jumlahSampel}"
+                                            th:data-material="${rec.jenisMaterial}"
+                                            th:data-sampel="${rec.daftarSampel}"
+                                            th:data-tgl="${rec.formattedTanggal}"
+                                            th:text="${rec.nomorPenerimaan} + ' — ' + ${rec.klien} + ' (' + ${rec.jumlahSampel} + ' sampel)'">
+                                        REC-2609-001 — PT. Freeport (2 sampel)
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- Preview Batch yang dipilih -->
+                            <div id="batchPreview" style="display:none;background:#0d2318;border:1px solid var(--green3);border-radius:6px;padding:10px 14px;margin-bottom:12px;">
+                                <div style="font-size:.7rem;color:var(--text3);margin-bottom:6px;">&#128230; Detail Batch Terpilih:</div>
+                                <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:0.75rem;">
+                                    <div><span style="color:var(--text3)">Klien:</span> <strong id="bpKlien" style="color:var(--gold)">—</strong></div>
+                                    <div><span style="color:var(--text3)">Jumlah Sampel:</span> <strong id="bpJml" style="color:var(--gold)">—</strong></div>
+                                    <div><span style="color:var(--text3)">Tgl Terima:</span> <strong id="bpTgl" style="color:var(--gold)">—</strong></div>
+                                </div>
+                                <div style="margin-top:6px;font-size:.72rem;color:var(--text3)">
+                                    <span style="color:var(--text2)">Material:</span> <span id="bpMat">—</span>
+                                </div>
+                                <div style="margin-top:4px;font-size:.72rem;color:var(--text3)">
+                                    <span style="color:var(--text2)">Sampel:</span> <span id="bpSampel">—</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PANEL MODE SINGLE -->
+                        <div id="panelSingle" style="display:none">
+                            <div class="form-group" style="margin-bottom:10px">
+                                <label>Pilih Sampel Spesifik *</label>
+                                <div style="max-height:180px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px;">
+                                    <label th:each="s : ${sampelSingle}" style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;font-size:.78rem">
+                                        <input type="checkbox" name="sampel_ids" th:value="${s.id}" style="accent-color:var(--gold);"/>
+                                        <strong style="color:var(--gold)" th:text="${s.kodeSampel}">S-2609-001</strong>
+                                        <span th:text="'— ' + ${s.jenisMaterial}">— Nikel</span>
+                                        <span style="color:var(--text3);font-size:.7rem" th:text="'(' + ${s.klien} + ')'">(PT. Antam)</span>
+                                    </label>
+                                    <div th:if="${#lists.isEmpty(sampelSingle)}" style="color:var(--text3);font-size:.78rem;padding:10px;text-align:center">
+                                        Tidak ada sampel antrian yang tersedia.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Assigned Analyst & Equipment -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Analis Laboratorium</label>
+                                <select name="analis_id">
+                                    <option value="">— Belum ditugaskan —</option>
+                                    <option th:each="a : ${analisList}" th:value="${a.id}" th:text="${a.nama}">Administrator Lab</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Instrumen / Peralatan</label>
+                                <select name="peralatan_id">
+                                    <option value="">— Pilih alat pengujian —</option>
+                                    <option th:each="alat : ${alatList}" th:value="${alat.id}" th:text="${alat.kodeAlat} + ' — ' + ${alat.nama}">
+                                        AAS-01 — AAS PinAAcle
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Metode Analisis</label>
+                                <select name="metode">
+                                    <option value="">— Pilih metode —</option>
+                                    <option th:each="m : ${metodeOpts}" th:value="${m}" th:text="${m}">AAS</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Parameter yang Diuji</label>
+                                <input type="text" name="parameter" placeholder="Au, Ag, Ni, Fe (pisah koma)"/>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Jadwal Mulai</label>
+                                <input type="datetime-local" name="jadwal_mulai"/>
+                            </div>
+                            <div class="form-group">
+                                <label>Jadwal Selesai</label>
+                                <input type="datetime-local" name="jadwal_selesai"/>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:14px">
+                            <label>Catatan / Instruksi Khusus</label>
+                            <textarea name="catatan" rows="2" placeholder="Instruksi khusus pengujian..."></textarea>
+                        </div>
+
+                        <div style="display:flex;gap:10px;">
+                            <button type="submit" name="status_awal" value="draft" class="btn btn-sm"
+                                    style="background:var(--bg3);border:1px solid var(--border);color:var(--text2)">
+                                &#128196; Simpan sebagai Draft
+                            </button>
+                            <button type="submit" name="status_awal" value="aktif" class="btn btn-gold">
+                                &#9654; Simpan &amp; Aktifkan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- RIGHT PANEL: Daftar batch menunggu WO -->
+                <div class="card">
+                    <div class="card-title">&#128230; Batch Penerimaan Menunggu WO</div>
+                    <div th:if="${#lists.isEmpty(penerimaanAntri)}" style="text-align:center;padding:24px;color:var(--text3)">
+                        Semua batch sudah memiliki work order aktif.
+                    </div>
+                    <div th:unless="${#lists.isEmpty(penerimaanAntri)}" style="overflow-x:auto">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>No. Penerimaan</th>
+                                    <th>Klien</th>
+                                    <th style="text-align:center">Sampel</th>
+                                    <th>Material</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="b : ${penerimaanAntri}">
+                                    <td>
+                                        <span class="badge" style="background:#1a2e0a;color:#a8d58a;border:1px solid #2e5018;font-family:monospace;"
+                                              th:text="${b.nomorPenerimaan}">REC-2609-001</span>
+                                    </td>
+                                    <td th:text="${b.klien}">PT. Freeport</td>
+                                    <td style="text-align:center">
+                                        <span class="badge" style="background:var(--bg3);border:1px solid var(--border);" th:text="${b.jumlahSampel}">2</span>
+                                    </td>
+                                    <td style="font-size:.72rem;color:var(--text3)" th:text="${b.jenisMaterial}">Nikel Laterit</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════
+             TAB 3: JADWAL INSTRUMEN
+        ═══════════════════════════════════════════════════ -->
+        <div id="tab-jadwal" class="tab-pane" th:style="${activeTab == 'jadwal' ? 'display:block;' : 'display:none;'}">
+
+            <div class="card">
+                <div class="card-title">&#128197; Jadwal Penggunaan Instrumen — 7 Hari ke Depan</div>
+                <div th:if="${#lists.isEmpty(jadwalAlat)}" style="text-align:center;padding:24px;color:var(--text3)">
+                    Tidak ada jadwal instrumen dalam 7 hari ke depan.
+                </div>
+                <div th:unless="${#lists.isEmpty(jadwalAlat)}" style="overflow-x:auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Instrumen</th>
+                                <th>No. WO</th>
+                                <th>No. Referensi Batch</th>
+                                <th>Klien</th>
+                                <th style="text-align:center">Sampel</th>
+                                <th>Analis</th>
+                                <th>Jadwal Mulai</th>
+                                <th>Jadwal Selesai</th>
+                                <th>Prioritas</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="j : ${jadwalAlat}">
+                                <td style="font-weight:700;color:var(--gold);" th:text="${j.kodeAlat != null ? j.kodeAlat : '—'}">AAS-01</td>
+                                <td style="font-family:monospace;" th:text="${j.nomorWo}">WO-2609-001</td>
+                                <td>
+                                    <span class="badge" style="background:#1a2e0a;color:#a8d58a;border:1px solid #2e5018;font-family:monospace;"
+                                          th:if="${j.nomorPenerimaan != null}" th:text="${j.nomorPenerimaan}">REC-2609-001</span>
+                                    <span th:unless="${j.nomorPenerimaan != null}" style="color:var(--text3)">—</span>
+                                </td>
+                                <td th:text="${j.klienBatch}">PT. Freeport</td>
+                                <td style="text-align:center">
+                                    <span class="badge" style="background:var(--bg3);border:1px solid var(--border);" th:text="${j.jumlahSampel}">1</span>
+                                </td>
+                                <td th:text="${j.namaAnalis}">Administrator Lab</td>
+                                <td th:text="${j.formattedJadwalMulai}">14/09/2026 09:00</td>
+                                <td th:text="${j.formattedJadwalSelesai}">14/09/2026 17:00</td>
+                                <td>
+                                    <span class="badge" th:classappend="${j.prioritasClass}" th:text="${#strings.toUpperCase(j.prioritas)}">NORMAL</span>
+                                </td>
+                                <td>
+                                    <span class="badge" th:classappend="${j.statusBadgeClass}" th:text="${j.statusLabel}">Aktif</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script th:inline="javascript">
+function switchTab(name) {
+    const tabs = ['daftar', 'buat', 'jadwal'];
+    tabs.forEach(t => {
+        const pane = document.getElementById('tab-' + t);
+        const btn = document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (pane) pane.style.display = (t === name ? 'block' : 'none');
+        if (btn) {
+            if (t === name) btn.classList.add('active');
+            else btn.classList.remove('active');
+        }
+    });
+    history.replaceState(null, '', '?tab=' + name);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab Listeners
+    const btnDaftar = document.getElementById('tabBtnDaftar');
+    const btnBuat = document.getElementById('tabBtnBuat');
+    const btnJadwal = document.getElementById('tabBtnJadwal');
+
+    if (btnDaftar) btnDaftar.addEventListener('click', () => switchTab('daftar'));
+    if (btnBuat) btnBuat.addEventListener('click', () => switchTab('buat'));
+    if (btnJadwal) btnJadwal.addEventListener('click', () => switchTab('jadwal'));
+
+    // Accordion Toggle Listeners
+    document.querySelectorAll('.btn-toggle-wo').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const body = document.getElementById('wo-body-' + id);
+            const ico = document.getElementById('wo-ico-' + id);
+            if (body) {
+                const isOpen = body.style.display === 'block';
+                body.style.display = isOpen ? 'none' : 'block';
+                if (ico) ico.innerHTML = isOpen ? '&#9660;' : '&#9650;';
+            }
+        });
+    });
+
+    // Mode Toggle Listeners
+    const modeBatchBtn = document.getElementById('modeBatchBtn');
+    const modeSingleBtn = document.getElementById('modeSingleBtn');
+    const panelBatch = document.getElementById('panelBatch');
+    const panelSingle = document.getElementById('panelSingle');
+    const hiddenMode = document.getElementById('hiddenModeWo');
+
+    if (modeBatchBtn && modeSingleBtn) {
+        modeBatchBtn.addEventListener('click', function() {
+            panelBatch.style.display = 'block';
+            panelSingle.style.display = 'none';
+            hiddenMode.value = 'batch';
+            modeBatchBtn.classList.add('btn-gold');
+            modeBatchBtn.style.color = '#000';
+            modeSingleBtn.classList.remove('btn-gold');
+            modeSingleBtn.style.color = 'var(--text3)';
+        });
+
+        modeSingleBtn.addEventListener('click', function() {
+            panelBatch.style.display = 'none';
+            panelSingle.style.display = 'block';
+            hiddenMode.value = 'single';
+            modeSingleBtn.classList.add('btn-gold');
+            modeSingleBtn.style.color = '#000';
+            modeBatchBtn.classList.remove('btn-gold');
+            modeBatchBtn.style.color = 'var(--text3)';
+        });
+    }
+
+    // Batch Preview on Select Change
+    const selPenerimaan = document.getElementById('selPenerimaan');
+    const batchPreview = document.getElementById('batchPreview');
+    if (selPenerimaan && batchPreview) {
+        selPenerimaan.addEventListener('change', function() {
+            const opt = this.options[this.selectedIndex];
+            if (!this.value) {
+                batchPreview.style.display = 'none';
+                return;
+            }
+            document.getElementById('bpKlien').textContent = opt.dataset.klien || '—';
+            document.getElementById('bpJml').textContent = opt.dataset.jml + ' sampel';
+            document.getElementById('bpTgl').textContent = opt.dataset.tgl || '—';
+            document.getElementById('bpMat').textContent = opt.dataset.material || '—';
+            document.getElementById('bpSampel').textContent = opt.dataset.sampel || '—';
+            batchPreview.style.display = 'block';
+        });
+    }
+});
+</script>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Master Data Sampel')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('sampel', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('Katalog &amp; Manajemen Master Sampel', 0, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- Flash Messages -->
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Error</div>
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sukses</div>
+
+        <!-- KPI Mini Stats -->
+        <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+            <div class="stat-card">
+                <div class="val" th:text="${totalSampel}">0</div>
+                <div class="lbl">Total Sampel Terdaftar</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--yellow);" th:text="${countAntrian}">0</div>
+                <div class="lbl">&#9203; Antrian Uji</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--text);" th:text="${countDiuji}">0</div>
+                <div class="lbl">&#9879; Sedang Dianalisis</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--green);" th:text="${countSelesai}">0</div>
+                <div class="lbl">&#9989; Pengujian Selesai</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <!-- Filter Form -->
+            <form th:action="@{/sampel}" method="GET" style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+                <input type="text" name="search" class="form-control" style="width:220px;" placeholder="Cari kode/material/klien..." th:value="${search}"/>
+                <select name="status" class="form-control" style="width:150px;">
+                    <option value="">Semua Status</option>
+                    <option th:each="st : ${statusOpts}" th:value="${st}" th:text="${#strings.toUpperCase(st)}" th:selected="${statusFilter == st}">ANTRIAN</option>
+                </select>
+                <select name="metode" class="form-control" style="width:140px;">
+                    <option value="">Semua Metode</option>
+                    <option th:each="m : ${metodeOpts}" th:value="${m}" th:text="${m}" th:selected="${metodeFilter == m}">AAS</option>
+                </select>
+                <select name="batch" class="form-control" style="width:200px;">
+                    <option value="">Semua Batch Penerimaan</option>
+                    <option th:each="b : ${batchList}" th:value="${b.id}" th:text="${b.nomorPenerimaan + ' — ' + b.klien}" th:selected="${batchFilter == b.id}"></option>
+                </select>
+                <button type="submit" class="btn btn-secondary">&#128269; Filter</button>
+                <a th:href="@{/sampel}" class="btn btn-secondary" style="color:var(--text3);">Reset</a>
+                <button type="button" onclick="window.print()" class="btn btn-primary" style="margin-left:auto;">&#128424; Cetak Label</button>
+            </form>
+
+            <div class="tbl-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Kode Sampel</th>
+                        <th>Jenis Material</th>
+                        <th>Berat (g)</th>
+                        <th>Klien</th>
+                        <th>Metode Uji</th>
+                        <th>Status</th>
+                        <th>Tgl Masuk</th>
+                        <th>Aksi Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${#lists.isEmpty(sampelList)}">
+                        <td colspan="8" style="text-align:center; color:var(--text3); padding:24px;">Belum ada data sampel yang terdaftar.</td>
+                    </tr>
+                    <tr th:each="s : ${sampelList}">
+                        <td>
+                            <strong style="color:var(--gold);" th:text="${s.kodeSampel}">SMP-001</strong>
+                            <div style="font-family:monospace; font-size:.65rem; color:var(--text3);">|| | ||| | || |||</div>
+                        </td>
+                        <td>
+                            <span style="font-weight:600; color:var(--text);" th:text="${s.jenisMaterial}">Biji Besi</span>
+                        </td>
+                        <td th:text="${s.beratGram != null ? (s.beratGram + ' g') : '-'}">500 g</td>
+                        <td style="font-size:.8rem;" th:text="${s.klien != null ? s.klien : '-'}">PT Klien</td>
+                        <td>
+                            <span class="badge badge-info" th:text="${s.metodeUji != null ? s.metodeUji : 'AAS'}">AAS</span>
+                        </td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${s.status == 'selesai' ? 'badge-lulus' : (s.status == 'ditolak' ? 'badge-tlulus' : (s.status == 'antrian' ? 'badge-draft' : 'badge-pending'))}"
+                                  th:text="${#strings.toUpperCase(s.status)}">ANTRIAN</span>
+                        </td>
+                        <td style="font-size:.78rem; color:var(--text3);"
+                            th:text="${s.tanggalMasuk != null and #strings.length(s.tanggalMasuk) >= 10 ? #strings.substring(s.tanggalMasuk, 0, 10) : (s.tanggalMasuk != null ? s.tanggalMasuk : '-')}">2026-09-14</td>
+                        <td>
+                            <form th:action="@{'/sampel/' + ${s.id} + '/status'}" method="POST" style="display:flex; gap:4px;">
+                                <select name="status" class="form-control" style="font-size:.72rem; padding:3px 6px; width:100px;">
+                                    <option th:each="st : ${statusOpts}" th:value="${st}" th:text="${st}" th:selected="${s.status == st}"></option>
+                                </select>
+                                <button type="submit" class="btn btn-secondary" style="font-size:.7rem; padding:3px 8px;">Ubah</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+</body>
+</html>

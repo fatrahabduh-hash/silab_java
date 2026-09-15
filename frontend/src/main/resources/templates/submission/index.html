@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Online Submissions')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('submissions', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('Sample Submission Form (SSF) &amp; Pengajuan Klien', 0, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- Flash Messages -->
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Error</div>
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sukses</div>
+
+        <!-- KPI Mini Stats -->
+        <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+            <div class="stat-card">
+                <div class="val" style="color:var(--yellow);" th:text="${countPending}">0</div>
+                <div class="lbl">&#9203; Menunggu Review / Verifikasi</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--green);" th:text="${countDiterima}">0</div>
+                <div class="lbl">&#9989; Disetujui (Siap Dikonversi)</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--gold);" th:text="${countDikonversi}">0</div>
+                <div class="lbl">&#128230; Telah Jadi Batch Penerimaan</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                <div class="card-title" style="margin-bottom:0;">Daftar Pengajuan Sampel Masuk (SSF Online)</div>
+
+                <!-- Filter Form -->
+                <form th:action="@{/submissions}" method="GET" style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <input type="text" name="search" class="form-control" style="width:240px;" placeholder="Cari no. SSF / klien..." th:value="${search}"/>
+                    <select name="status" class="form-control" style="width:160px;">
+                        <option value="">Semua Status</option>
+                        <option value="pending" th:selected="${statusFilter == 'pending'}">Pending</option>
+                        <option value="diterima" th:selected="${statusFilter == 'diterima'}">Diterima</option>
+                        <option value="ditolak" th:selected="${statusFilter == 'ditolak'}">Ditolak</option>
+                        <option value="dikonversi" th:selected="${statusFilter == 'dikonversi'}">Dikonversi</option>
+                    </select>
+                    <button type="submit" class="btn btn-secondary">&#128269; Filter</button>
+                    <a th:href="@{/submissions}" class="btn btn-secondary" style="color:var(--text3);">Reset</a>
+                </form>
+            </div>
+
+            <div class="tbl-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>No. Submission</th>
+                        <th>Perusahaan / Klien</th>
+                        <th>Kontak &amp; Email</th>
+                        <th>Ref PO</th>
+                        <th>Tanggal Submit</th>
+                        <th>Rincian Sampel</th>
+                        <th>Status</th>
+                        <th>Aksi Verifikasi &amp; Konversi</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${#lists.isEmpty(submissions)}">
+                        <td colspan="8" style="text-align:center; color:var(--text3); padding:24px;">
+                            Belum ada formulir permohonan sampel online (SSF) yang masuk.
+                        </td>
+                    </tr>
+                    <tr th:each="s : ${submissions}">
+                        <td>
+                            <strong style="color:var(--gold);" th:text="${s.nomorSubmission}">SSF-2609-001</strong>
+                        </td>
+                        <td>
+                            <div style="font-weight:600; color:var(--text);" th:text="${s.klien}">PT Mineral Nusantara</div>
+                            <div style="font-size:.7rem; color:var(--text3);" th:text="${s.kontakPerson}">PIC</div>
+                        </td>
+                        <td style="font-size:.8rem;">
+                            <div th:text="${s.email != null ? s.email : '-'}">klien@mail.com</div>
+                            <div style="font-size:.7rem; color:var(--text3);" th:text="${s.telepon != null ? s.telepon : '-'}">0812...</div>
+                        </td>
+                        <td style="font-size:.8rem; color:var(--text3);" th:text="${s.poReferensi != null ? s.poReferensi : '-'}">-</td>
+                        <td style="font-size:.8rem; color:var(--text3);" th:text="${s.tanggalSubmit != null and #strings.length(s.tanggalSubmit) >= 10 ? #strings.substring(s.tanggalSubmit, 0, 10) : (s.tanggalSubmit != null ? s.tanggalSubmit : '-')}">2026-09-14</td>
+                        <td>
+                            <span class="badge badge-info" th:text="${s.jumlahSampel} + ' Sampel'">1 Sampel</span>
+                        </td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${s.status == 'dikonversi' ? 'badge-lulus' : (s.status == 'diterima' ? 'badge-info' : (s.status == 'ditolak' ? 'badge-tlulus' : 'badge-pending'))}"
+                                  th:text="${#strings.toUpperCase(s.status)}">PENDING</span>
+                        </td>
+                        <td>
+                            <div style="display:flex; gap:6px;">
+                                <!-- Terima -->
+                                <form th:if="${s.status == 'pending'}" th:action="@{'/submissions/' + ${s.id} + '/status'}" method="POST" style="display:inline;">
+                                    <input type="hidden" name="status" value="diterima"/>
+                                    <button type="submit" class="btn btn-secondary" style="padding:4px 8px; font-size:.72rem;">&#10003; Setujui</button>
+                                </form>
+                                <!-- Tolak -->
+                                <form th:if="${s.status == 'pending'}" th:action="@{'/submissions/' + ${s.id} + '/status'}" method="POST" style="display:inline;">
+                                    <input type="hidden" name="status" value="ditolak"/>
+                                    <button type="submit" class="btn btn-secondary" style="padding:4px 8px; font-size:.72rem; color:var(--red);">&#10007; Tolak</button>
+                                </form>
+                                <!-- Konversi ke Batch Penerimaan -->
+                                <form th:if="${s.status == 'diterima'}" th:action="@{'/submissions/' + ${s.id} + '/convert'}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn btn-primary" style="padding:4px 8px; font-size:.72rem;">&#128230; Konversi ke Penerimaan</button>
+                                </form>
+                                <span th:if="${s.status == 'dikonversi'}" style="color:var(--text3); font-size:.75rem;">Selesai Dikonversi</span>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+</body>
+</html>

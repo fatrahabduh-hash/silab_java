@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div id="sidebar" th:fragment="sidebar(activeMenu, userNama)">
+    <div class="logo">
+        <h2>&#9879; AISPEKTRA LABORATORY</h2>
+        <p>Sistem Informasi Laboratorium</p>
+    </div>
+    <nav>
+        <a th:href="@{/dashboard}" th:classappend="${activeMenu == 'dashboard' ? 'active' : ''}">
+            <span class="ico">&#128202;</span> Dashboard
+        </a>
+        <a th:href="@{/penerimaan}" th:classappend="${activeMenu == 'penerimaan' ? 'active' : ''}">
+            <span class="ico">&#128230;</span> Penerimaan Sampel
+        </a>
+        <a th:href="@{/sampel}" th:classappend="${activeMenu == 'sampel' ? 'active' : ''}">
+            <span class="ico">&#127991;</span> Master Sampel &amp; Barcode
+        </a>
+        <a th:href="@{/work-order}" th:classappend="${activeMenu == 'work-order' ? 'active' : ''}">
+            <span class="ico">&#128203;</span> Work Order
+        </a>
+        <a th:href="@{/preparasi}" th:classappend="${activeMenu == 'preparasi' ? 'active' : ''}">
+            <span class="ico">&#128260;</span> Preparasi
+        </a>
+        <a th:href="@{/qc}" th:classappend="${activeMenu == 'qc' ? 'active' : ''}">
+            <span class="ico">&#10003;</span> QC &amp; Validasi
+        </a>
+        <a th:href="@{/pengujian}" th:classappend="${activeMenu == 'pengujian' ? 'active' : ''}">
+            <span class="ico">&#128300;</span> Pengujian
+        </a>
+        <a th:href="@{/invoice}" th:classappend="${activeMenu == 'invoice' ? 'active' : ''}">
+            <span class="ico">&#128179;</span> Invoice
+        </a>
+        <a th:href="@{/bahan}" th:classappend="${activeMenu == 'bahan' ? 'active' : ''}">
+            <span class="ico">&#129514;</span> Inventaris Bahan
+        </a>
+        <a th:href="@{/peralatan}" th:classappend="${activeMenu == 'peralatan' ? 'active' : ''}">
+            <span class="ico">&#9881;</span> Peralatan
+        </a>
+        <a th:href="@{/monitoring}" th:classappend="${activeMenu == 'monitoring' ? 'active' : ''}">
+            <span class="ico">&#128202;</span> Monitoring Sampel
+        </a>
+        <a th:href="@{/laporan}" th:classappend="${activeMenu == 'laporan' ? 'active' : ''}">
+            <span class="ico">&#128196;</span> Laporan
+        </a>
+        <a th:href="@{/xrf/data}" th:classappend="${activeMenu == 'xrf' ? 'active' : ''}">
+            <span class="ico">&#9889;</span> Data XRF Explorer
+        </a>
+        <a th:href="@{/submissions}" th:classappend="${activeMenu == 'submissions' ? 'active' : ''}">
+            <span class="ico">&#128203;</span> Online Submissions
+        </a>
+        <a th:href="@{/pengguna}" th:classappend="${activeMenu == 'pengguna' ? 'active' : ''}">
+            <span class="ico">&#128101;</span> Manajemen Pengguna
+        </a>
+    </nav>
+    <div class="sidebar-footer">
+        v2.0.0 &bull; <span th:text="${userNama != null ? userNama : 'Administrator Lab'}">Admin</span><br>
+        <a th:href="@{/logout}" style="color:var(--red)">&#128682; Logout</a>
+    </div>
+</div>
+
+</body>
+</html>

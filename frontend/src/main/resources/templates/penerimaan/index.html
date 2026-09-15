@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head(${pageTitle})}"></head>
+<body>
+
+<!-- SIDEBAR -->
+<div th:replace="~{fragments/sidebar :: sidebar('penerimaan', ${userNama})}"></div>
+
+<!-- MAIN LAYOUT -->
+<div id="main">
+
+    <!-- TOPBAR -->
+    <div th:replace="~{fragments/header :: topbar(${pageTitle}, 0, ${userNama}, ${userRole})}"></div>
+
+    <!-- CONTENT -->
+    <div id="content">
+
+        <div class="sec-title">Penerimaan Sampel</div>
+
+        <!-- ALERTS -->
+        <div th:if="${successMessage}" class="alert-box alert-green" style="margin-bottom:14px">
+            &#10003; <span th:text="${successMessage}">Pesan sukses</span>
+        </div>
+        <div th:if="${errorMessage}" class="alert-box alert-red" style="margin-bottom:14px">
+            &#9888; <span th:text="${errorMessage}">Pesan error</span>
+        </div>
+
+        <!-- TABS -->
+        <div class="tabs no-print" style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);">
+            <button type="button" id="tabBtnDaftar" class="tab-btn"
+                    th:classappend="${activeTab == 'daftar' ? 'active' : ''}"
+                    style="padding:8px 18px;background:none;border:none;border-bottom:3px solid transparent;font-size:.82rem;cursor:pointer;font-weight:600;transition:.2s;margin-bottom:-1px;">
+                &#128203; Daftar Penerimaan
+            </button>
+            <button type="button" id="tabBtnBatch" class="tab-btn"
+                    th:classappend="${activeTab == 'batch' ? 'active' : ''}"
+                    style="padding:8px 18px;background:none;border:none;border-bottom:3px solid transparent;font-size:.82rem;cursor:pointer;font-weight:600;transition:.2s;margin-bottom:-1px;">
+                &#10133; Penerimaan Baru
+            </button>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════
+             TAB 1 — DAFTAR PENERIMAAN
+        ══════════════════════════════════════════════════ -->
+        <div id="tab-daftar" class="tab-pane" th:style="${activeTab == 'daftar' ? 'display:block;' : 'display:none;'}">
+
+            <!-- Filter & Search -->
+            <form th:action="@{/penerimaan}" method="GET" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+                <input type="hidden" name="tab" value="daftar"/>
+                <input type="text" name="q" th:value="${search}" placeholder="&#128269; Cari no. penerimaan / klien..."
+                       style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:6px;font-size:.8rem;outline:none"/>
+                <select name="status" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:.8rem;outline:none">
+                    <option value="">Semua Status</option>
+                    <option th:each="st : ${statusOpts}" th:value="${st}" th:text="${#strings.capitalize(st)}" th:selected="${statusFilter == st}">Diterima</option>
+                </select>
+                <button type="submit" class="btn btn-green btn-sm">Cari</button>
+            </form>
+
+            <div class="card">
+                <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span>&#128230; Daftar Penerimaan Sampel</span>
+                    <span style="font-size:0.75rem;color:var(--gold);font-weight:600;" th:text="${#lists.size(recList)} + ' batch'">0 batch</span>
+                </div>
+                <div style="overflow-x:auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>No. Penerimaan</th>
+                                <th>Klien</th>
+                                <th>Tgl Terima</th>
+                                <th style="text-align:center">Sampel</th>
+                                <th style="text-align:center">Status</th>
+                                <th style="text-align:center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <th:block th:each="r : ${recList}">
+                                <tr>
+                                    <td style="font-weight:700;color:var(--gold);font-family:monospace;" th:text="${r.nomorPenerimaan}">REC-2609-001</td>
+                                    <td>
+                                        <strong th:text="${r.klien}">PT. Freeport Indonesia</strong>
+                                        <small th:if="${r.jenisMaterial != null}" style="display:block;color:var(--text3);" th:text="${r.jenisMaterial} + ' &bull; ' + ${r.metodeUji != null ? r.metodeUji : '-'}"></small>
+                                    </td>
+                                    <td th:text="${r.formattedTanggal}">13/09/2026</td>
+                                    <td style="text-align:center">
+                                        <strong th:text="${r.totalSampel}">1</strong>
+                                    </td>
+                                    <td style="text-align:center">
+                                        <form method="POST" th:action="@{/penerimaan/{id}/status(id=${r.id})}" style="display:inline">
+                                            <select name="status" class="sel-inline" onchange="this.form.submit()" style="width:96px;font-size:.7rem">
+                                                <option th:each="st : ${statusOpts}"
+                                                        th:value="${st}"
+                                                        th:text="${#strings.capitalize(st)}"
+                                                        th:selected="${r.status == st}">
+                                                    diterima
+                                                </option>
+                                            </select>
+                                        </form>
+                                    </td>
+                                    <td style="text-align:center;white-space:nowrap;">
+                                        <span class="badge" th:classappend="${r.statusBadgeClass}" th:text="${r.statusLabel}">Diterima</span>
+                                    </td>
+                                </tr>
+
+                                <!-- Sub-tabel rincian sampel batch -->
+                                <tr th:if="${not #lists.isEmpty(r.safeSamples)}" class="detail-row">
+                                    <td colspan="6" style="background:#08160d;border-top:none;padding:8px 14px;">
+                                        <div style="font-size:0.75rem;color:var(--text2);display:flex;flex-direction:column;gap:6px;">
+                                            <div th:each="sb : ${r.safeSamples}" style="display:grid;grid-template-columns:160px 1.5fr 100px 120px 100px;align-items:center;gap:10px;">
+                                                <span style="font-family:monospace;color:var(--gold);" th:text="'↳ ' + ${sb.kodeSampel}">↳ S-2609-001</span>
+                                                <span th:text="${sb.jenisMaterial}">Bijih Emas</span>
+                                                <span th:text="${sb.beratGram != null ? sb.beratGram + ' g' : '—'}">500 g</span>
+                                                <span th:text="${sb.metodeUji != null ? sb.metodeUji : '—'}">AAS</span>
+                                                <span>
+                                                    <span class="badge" th:classappend="${sb.statusBadgeClass}" th:text="${sb.statusLabel}">Antrian</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </th:block>
+
+                            <tr th:if="${#lists.isEmpty(recList)}">
+                                <td colspan="6" style="text-align:center;color:var(--text3);padding:24px">
+                                    Tidak ada data penerimaan sampel ditemukan.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TABEL SUBMISSION SIAP PROSES -->
+            <div class="card" th:if="${not #lists.isEmpty(submissionsList)}" style="margin-top:16px">
+                <div class="card-title">&#128203; Submission Klien Siap Diproses</div>
+                <div style="overflow-x:auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>No. Submission</th>
+                                <th>Klien</th>
+                                <th>Email</th>
+                                <th>Tgl Submit</th>
+                                <th style="text-align:center">Sampel</th>
+                                <th style="text-align:center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="sub : ${submissionsList}">
+                                <td style="font-family:monospace;color:var(--gold);" th:text="${sub.nomorSubmission}">SUB-2609-001</td>
+                                <td th:text="${sub.klien}">PT. Bumi Mineral</td>
+                                <td th:text="${sub.email != null ? sub.email : '—'}">client@mineral.com</td>
+                                <td th:text="${sub.formattedTanggal}">12/09/2026</td>
+                                <td style="text-align:center" th:text="${sub.jumlahSampel}">3</td>
+                                <td style="text-align:center">
+                                    <form method="POST" th:action="@{/penerimaan/submission/{id}/process(id=${sub.id})}" style="display:inline"
+                                          onsubmit="return confirm('Proses submission ini menjadi Batch Penerimaan resmi?');">
+                                        <button type="submit" class="btn btn-gold btn-sm" style="font-size:.68rem;padding:4px 10px">
+                                            &#128230; Proses ke Penerimaan
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ══════════════════════════════════════════════════
+             TAB 2 — PENERIMAAN BARU (BATCH)
+        ══════════════════════════════════════════════════ -->
+        <div id="tab-batch" class="tab-pane" th:style="${activeTab == 'batch' ? 'display:block;' : 'display:none;'}">
+
+            <div class="card">
+                <div class="card-title">&#10133; Penerimaan Sampel Baru</div>
+                <form method="POST" th:action="@{/penerimaan/simpan}" id="formPenerimaan">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>No. Penerimaan (Preview)</label>
+                            <input type="text" name="nomorPenerimaan" th:value="${noAuto}" readonly="readonly"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Tanggal Terima *</label>
+                            <input type="date" name="tanggalTerima" th:value="${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}" required="required"/>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Klien / Perusahaan *</label>
+                            <input type="text" name="klien" placeholder="Nama perusahaan klien" required="required"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Keterangan Batch</label>
+                            <textarea name="keterangan" rows="1" placeholder="Catatan penerimaan sampel..."></textarea>
+                        </div>
+                    </div>
+
+                    <div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px;background:var(--bg3);">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                            <span style="font-size:.8rem;font-weight:600;color:var(--gold)">&#129704; Daftar Sampel dalam Batch</span>
+                            <button type="button" id="btnAddBatchRow" class="btn btn-green btn-sm">&#10133; Tambah Sampel</button>
+                        </div>
+                        <div id="batchRows"></div>
+                        <div style="font-size:.75rem;color:var(--text3);margin-top:8px">
+                            Total: <strong id="totalBatch" style="color:var(--gold)">0</strong> sampel
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-gold">&#128190; Simpan Penerimaan &amp; Semua Sampel</button>
+                </form>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script th:inline="javascript">
+const matOpts = /*[[${materialOpts}]]*/ ["Bijih Emas", "Nikel Laterit", "Tembaga", "Bauksit", "Bijih Besi", "Timbal/Seng", "Mangan", "Kromit", "Lainnya"];
+const metOpts = /*[[${metodeOpts}]]*/ ["AAS", "XRF", "ICP-OES", "Gravimetri", "Fire Assay", "Volumetri"];
+let batchRowCnt = 0;
+
+function switchTab(name) {
+    const paneDaftar = document.getElementById('tab-daftar');
+    const paneBatch = document.getElementById('tab-batch');
+    const btnDaftar = document.getElementById('tabBtnDaftar');
+    const btnBatch = document.getElementById('tabBtnBatch');
+
+    if (name === 'batch') {
+        paneDaftar.style.display = 'none';
+        paneBatch.style.display = 'block';
+        btnDaftar.classList.remove('active');
+        btnBatch.classList.add('active');
+    } else {
+        paneDaftar.style.display = 'block';
+        paneBatch.style.display = 'none';
+        btnDaftar.classList.add('active');
+        btnBatch.classList.remove('active');
+    }
+    history.replaceState(null, '', '?tab=' + name);
+}
+
+function tambahBarisBatch(jenisMaterial, beratGram, metodeUji, keterangan) {
+    batchRowCnt++;
+    const i = batchRowCnt;
+    const mO = matOpts.map(m => `<option value="${m}" ${m === jenisMaterial ? 'selected' : ''}>${m}</option>`).join('');
+    const eO = metOpts.map(m => `<option value="${m}" ${m === metodeUji ? 'selected' : ''}>${m}</option>`).join('');
+    const bVal = beratGram ? beratGram : '';
+    const kVal = keterangan ? keterangan : '';
+
+    const html = `
+    <div id="br${i}" style="display:grid;grid-template-columns:1.5fr 1fr 1fr 1.2fr auto;gap:8px;margin-bottom:8px;align-items:end">
+        <div class="form-group" style="margin-bottom:0">
+            <label style="font-size:.7rem;color:var(--text3)">Material #${i}</label>
+            <select name="sampel[${i}][jenis_material]">${mO}</select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+            <label style="font-size:.7rem;color:var(--text3)">Berat (g)</label>
+            <input type="number" step="0.001" name="sampel[${i}][berat_gram]" value="${bVal}" placeholder="0.000"/>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+            <label style="font-size:.7rem;color:var(--text3)">Metode</label>
+            <select name="sampel[${i}][metode_uji]">${eO}</select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+            <label style="font-size:.7rem;color:var(--text3)">Keterangan</label>
+            <input type="text" name="sampel[${i}][keterangan]" value="${kVal}" placeholder="Catatan sampel..."/>
+        </div>
+        <div>
+            <button type="button" class="btn-del-row" data-row="${i}"
+                    style="background:var(--red);color:#fff;border:none;border-radius:5px;padding:7px 10px;cursor:pointer;font-size:.75rem">&#10005;</button>
+        </div>
+    </div>`;
+
+    document.getElementById('batchRows').insertAdjacentHTML('beforeend', html);
+    updateBatchCount();
+
+    const newDelBtn = document.querySelector(`#br${i} .btn-del-row`);
+    if (newDelBtn) {
+        newDelBtn.addEventListener('click', function() {
+            const rowId = this.dataset.row;
+            const target = document.getElementById('br' + rowId);
+            if (target) target.remove();
+            updateBatchCount();
+        });
+    }
+}
+
+function updateBatchCount() {
+    const rows = document.querySelectorAll('#batchRows > div');
+    const totalEl = document.getElementById('totalBatch');
+    if (totalEl) totalEl.textContent = rows.length;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const btnDaftar = document.getElementById('tabBtnDaftar');
+    const btnBatch = document.getElementById('tabBtnBatch');
+    const btnAdd = document.getElementById('btnAddBatchRow');
+
+    if (btnDaftar) btnDaftar.addEventListener('click', () => switchTab('daftar'));
+    if (btnBatch) btnBatch.addEventListener('click', () => switchTab('batch'));
+    if (btnAdd) btnAdd.addEventListener('click', () => tambahBarisBatch());
+
+    // Inisialisasi baris pertama jika form batch masih kosong
+    if (document.querySelectorAll('#batchRows > div').length === 0) {
+        tambahBarisBatch();
+    }
+});
+</script>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+</body>
+</html>

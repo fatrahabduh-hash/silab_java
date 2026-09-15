@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Monitoring Sampel')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('monitoring', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('Monitoring Alur &amp; Status Sampel Real-time', 0, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- KPI Mini Stats -->
+        <div class="stat-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+            <div class="stat-card">
+                <div class="val" th:text="${totalBatch}">0</div>
+                <div class="lbl">Total Batch Terdaftar</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--yellow);" th:text="${prosesBatch}">0</div>
+                <div class="lbl">Batch Dalam Proses Laboratorium</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--green);" th:text="${selesaiBatch}">0</div>
+                <div class="lbl">Batch Selesai (Report Ready)</div>
+            </div>
+        </div>
+
+        <div th:if="${#lists.isEmpty(batches)}" class="card" style="text-align:center; padding:40px; color:var(--text3);">
+            Belum ada data batch penerimaan sampel yang tercatat untuk dimonitor.
+        </div>
+
+        <!-- Stepper Cards for each Batch -->
+        <div th:each="b : ${batches}" class="card" style="margin-bottom:20px; border-left:4px solid var(--gold);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+                <div>
+                    <h3 style="color:var(--gold); font-size:1.1rem; margin-bottom:4px;" th:text="${b.nomorPenerimaan}">REC-001</h3>
+                    <div style="font-size:.82rem; color:var(--text2);">
+                        <strong th:text="${b.klien}">PT Mineral Nusantara</strong> &bull;
+                        <span th:text="${b.jumlahSampel != null ? b.jumlahSampel : 0} + ' Sampel'">0 Sampel</span> &bull;
+                        <span th:text="${b.tanggalTerima != null ? b.tanggalTerima : '-'}">2026-09-14</span>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <span class="badge"
+                          th:classappend="${b.hasSelesai ? 'badge-lulus' : 'badge-pending'}"
+                          th:text="${#strings.toUpperCase(b.statusGlobal != null ? b.statusGlobal : 'PROSES')}">PROSES</span>
+                    <div style="font-size:.78rem; font-weight:700; color:var(--gold); margin-top:4px;" th:text="${b.progressPct} + '% Selesai'">60% Selesai</div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div style="background:var(--bg3); height:8px; border-radius:4px; overflow:hidden; margin-bottom:20px;">
+                <div th:style="'background:linear-gradient(90deg, var(--green3), var(--green)); height:100%; width:' + ${b.progressPct} + '%;'"></div>
+            </div>
+
+            <!-- Pipeline Steps -->
+            <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; text-align:center; font-size:.78rem;">
+                <div style="background:var(--bg3); padding:10px; border-radius:8px; border:1px solid var(--green);">
+                    <div style="font-size:1.2rem; color:var(--green);">&#9989;</div>
+                    <div style="font-weight:700; color:var(--text); margin-top:4px;">1. Penerimaan</div>
+                    <div style="font-size:.7rem; color:var(--text3);">Sampel Terdaftar</div>
+                </div>
+
+                <div style="background:var(--bg3); padding:10px; border-radius:8px;"
+                     th:styleappend="${b.hasWo ? 'border:1px solid var(--green);' : 'opacity:0.5;'}">
+                    <div style="font-size:1.2rem;" th:text="${b.hasWo ? '&#9989;' : '&#9203;'}">&#9989;</div>
+                    <div style="font-weight:700; color:var(--text); margin-top:4px;">2. Work Order</div>
+                    <div style="font-size:.7rem; color:var(--text3);" th:text="${b.hasWo ? 'WO Diterbitkan' : 'Menunggu WO'}">WO Diterbitkan</div>
+                </div>
+
+                <div style="background:var(--bg3); padding:10px; border-radius:8px;"
+                     th:styleappend="${b.hasPrep ? 'border:1px solid var(--green);' : 'opacity:0.5;'}">
+                    <div style="font-size:1.2rem;" th:text="${b.hasPrep ? '&#9989;' : '&#9203;'}">&#9203;</div>
+                    <div style="font-weight:700; color:var(--text); margin-top:4px;">3. Preparasi</div>
+                    <div style="font-size:.7rem; color:var(--text3);" th:text="${b.hasPrep ? 'Selesai Dipreparasi' : 'Antrean Preparasi'}">Preparasi</div>
+                </div>
+
+                <div style="background:var(--bg3); padding:10px; border-radius:8px;"
+                     th:styleappend="${b.hasUji ? 'border:1px solid var(--green);' : 'opacity:0.5;'}">
+                    <div style="font-size:1.2rem;" th:text="${b.hasUji ? '&#9989;' : '&#9203;'}">&#9203;</div>
+                    <div style="font-weight:700; color:var(--text); margin-top:4px;">4. Pengujian</div>
+                    <div style="font-size:.7rem; color:var(--text3);" th:text="${b.hasUji ? 'Hasil Terukur' : 'Menunggu Uji'}">Pengujian</div>
+                </div>
+
+                <div style="background:var(--bg3); padding:10px; border-radius:8px;"
+                     th:styleappend="${b.hasSelesai || b.hasQc ? 'border:1px solid var(--green);' : 'opacity:0.5;'}">
+                    <div style="font-size:1.2rem;" th:text="${b.hasSelesai ? '&#9989;' : (b.hasQc ? '&#9888;' : '&#9203;')}">&#9203;</div>
+                    <div style="font-weight:700; color:var(--text); margin-top:4px;">5. QC &amp; Selesai</div>
+                    <div style="font-size:.7rem; color:var(--text3);" th:text="${b.hasSelesai ? 'CoA &amp; Selesai' : (b.hasQc ? 'Validasi Mutu' : 'Belum Validasi')}">QC Mutu</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+</body>
+</html>

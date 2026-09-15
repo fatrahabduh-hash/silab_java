@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Pengujian Laboratorium')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('pengujian', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('Pusat Pengujian &amp; Hasil Analisis', 0, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- Flash Messages -->
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Error</div>
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sukses</div>
+
+        <!-- KPI Mini Stats -->
+        <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+            <div class="stat-card">
+                <div class="val" th:text="${totalHasil}">0</div>
+                <div class="lbl">Total Hasil Uji</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--green);" th:text="${totalLulus}">0</div>
+                <div class="lbl">Status Lulus Standar</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--red);" th:text="${totalTidakLulus}">0</div>
+                <div class="lbl">Tidak Memenuhi Syarat</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--yellow);" th:text="${totalPending}">0</div>
+                <div class="lbl">Menunggu Verifikasi</div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button type="button" class="tab-btn"
+                    th:classappend="${activeTab == 'daftar' ? 'active' : ''}"
+                    onclick="switchTab('daftar')">&#128202; Hasil Pengujian</button>
+            <button type="button" class="tab-btn"
+                    th:classappend="${activeTab == 'input' ? 'active' : ''}"
+                    onclick="switchTab('input')">&#10133; Input Hasil Uji</button>
+        </div>
+
+        <!-- Tab 1: Daftar Hasil Uji -->
+        <div id="tab-daftar" class="tab-pane" th:classappend="${activeTab == 'daftar' ? 'active' : ''}">
+            <div class="card">
+                <!-- Filter Form -->
+                <form th:action="@{/pengujian}" method="GET" style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+                    <input type="hidden" name="tab" value="daftar"/>
+                    <input type="text" name="search" class="form-control" style="width:200px;" placeholder="Cari kode/klien..." th:value="${search}"/>
+                    <input type="text" name="parameter" class="form-control" style="width:140px;" placeholder="Parameter..." th:value="${paramFilter}"/>
+                    <select name="kesimpulan" class="form-control" style="width:150px;">
+                        <option value="">Semua Status</option>
+                        <option value="lulus" th:selected="${kesFilter == 'lulus'}">Lulus</option>
+                        <option value="tidak_lulus" th:selected="${kesFilter == 'tidak_lulus'}">Tidak Lulus</option>
+                        <option value="pending" th:selected="${kesFilter == 'pending'}">Pending</option>
+                    </select>
+                    <select name="metode" class="form-control" style="width:140px;">
+                        <option value="">Semua Metode</option>
+                        <option th:each="m : ${metodeOpts}" th:value="${m}" th:text="${m}" th:selected="${metFilter == m}">AAS</option>
+                    </select>
+                    <button type="submit" class="btn btn-secondary">&#128269; Filter</button>
+                    <a th:href="@{/pengujian}" class="btn btn-secondary" style="color:var(--text3);">Reset</a>
+                </form>
+
+                <div class="tbl-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Kode Uji</th>
+                            <th>Sampel &amp; Klien</th>
+                            <th>Parameter</th>
+                            <th>Nilai Mentah</th>
+                            <th>Nilai Terkoreksi</th>
+                            <th>Batas Standar</th>
+                            <th>Metode / Alat</th>
+                            <th>Kesimpulan</th>
+                            <th>Tgl Uji</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(hasilList)}">
+                            <td colspan="9" style="text-align:center; color:var(--text3); padding:24px;">
+                                Belum ada data hasil pengujian yang sesuai dengan kriteria filter.
+                            </td>
+                        </tr>
+                        <tr th:each="h : ${hasilList}">
+                            <td>
+                                <strong style="color:var(--gold);" th:text="${h.kodeUji != null ? h.kodeUji : ('U-' + h.id)}">U-001</strong>
+                            </td>
+                            <td>
+                                <div style="font-weight:600; color:var(--text);" th:text="${h.sample != null ? h.sample.kodeSampel : ('ID #' + h.sampelId)}">SMP-001</div>
+                                <div style="font-size:.7rem; color:var(--text3);" th:text="${h.sample != null ? (h.sample.jenisMaterial + ' &bull; ' + h.sample.klien) : '-'}">Biji Nikel &bull; Klien</div>
+                            </td>
+                            <td>
+                                <span class="badge badge-info" th:text="${h.parameter}">Fe</span>
+                            </td>
+                            <td th:text="${h.nilai} + ' ' + ${h.satuan != null ? h.satuan : '%'}">45.5 %</td>
+                            <td>
+                                <strong style="color:var(--gold);" th:text="${h.nilaiTerkoreksi != null ? h.nilaiTerkoreksi : h.nilai} + ' ' + ${h.satuan != null ? h.satuan : '%'}">45.5 %</strong>
+                            </td>
+                            <td style="font-size:.78rem; color:var(--text3);"
+                                th:text="${(h.batasMin != null ? h.batasMin : '-') + ' &mdash; ' + (h.batasMaks != null ? h.batasMaks : '-')}">-</td>
+                            <td>
+                                <div th:text="${h.metode != null ? h.metode : 'AAS'}">AAS</div>
+                                <div style="font-size:.7rem; color:var(--text3);" th:text="${h.equipment != null ? h.equipment.kodeAlat : '-'}">EQ-01</div>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${h.kesimpulan == 'lulus' ? 'badge-lulus' : (h.kesimpulan == 'tidak_lulus' ? 'badge-tlulus' : 'badge-pending')}"
+                                      th:text="${#strings.toUpperCase(h.kesimpulan != null ? h.kesimpulan : 'PENDING')}">LULUS</span>
+                            </td>
+                            <td style="font-size:.75rem; color:var(--text3);"
+                                th:text="${h.tanggalUji != null ? h.tanggalUji : (h.createdAt != null and #strings.length(h.createdAt) >= 10 ? #strings.substring(h.createdAt, 0, 10) : (h.createdAt != null ? h.createdAt : '-'))}">2026-09-14</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Input Hasil Uji -->
+        <div id="tab-input" class="tab-pane" th:classappend="${activeTab == 'input' ? 'active' : ''}">
+            <div class="card" style="max-width:800px;">
+                <div class="card-title">&#128300; Formulir Input Hasil Pengujian Laboratorium</div>
+
+                <form th:action="@{/pengujian/simpan}" method="POST">
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label>Target Sampel Laboratorium <span style="color:var(--red)">*</span></label>
+                        <select name="sampel_id" class="form-control" required>
+                            <option value="">-- Pilih Sampel --</option>
+                            <option th:each="s : ${sampelList}" th:value="${s.id}"
+                                    th:text="${s.kodeSampel + ' — ' + s.jenisMaterial + ' (' + s.klien + ')'}"></option>
+                        </select>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:2fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="form-group">
+                            <label>Parameter Pengujian <span style="color:var(--red)">*</span></label>
+                            <input type="text" name="parameter" class="form-control" placeholder="Contoh: Fe, SiO2, Al2O3, Au, Cu" required/>
+                        </div>
+                        <div class="form-group">
+                            <label>Nilai Pengukuran <span style="color:var(--red)">*</span></label>
+                            <input type="number" step="0.0001" name="nilai" class="form-control" placeholder="0.00" required/>
+                        </div>
+                        <div class="form-group">
+                            <label>Satuan</label>
+                            <select name="satuan" class="form-control">
+                                <option th:each="sat : ${satuanOpts}" th:value="${sat}" th:text="${sat}">%</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="form-group">
+                            <label>Metode Analisis</label>
+                            <select name="metode" class="form-control">
+                                <option th:each="m : ${metodeOpts}" th:value="${m}" th:text="${m}">AAS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Instrumen Penguji</label>
+                            <select name="alat_id" class="form-control">
+                                <option value="">-- Pilih Instrumen --</option>
+                                <option th:each="a : ${alatList}" th:value="${a.id}" th:text="${a.nama + ' (' + a.kodeAlat + ')'}"></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="form-group">
+                            <label>Faktor Pengenceran</label>
+                            <input type="number" step="0.01" name="faktor_pengenceran" class="form-control" value="1.0"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Batas Minimum (LSL)</label>
+                            <input type="number" step="0.0001" name="batas_min" class="form-control" placeholder="Opsional"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Batas Maksimum (USL)</label>
+                            <input type="number" step="0.0001" name="batas_maks" class="form-control" placeholder="Opsional"/>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="form-group">
+                            <label>Kesimpulan Awal</label>
+                            <select name="kesimpulan" class="form-control">
+                                <option value="pending">Pending (Menunggu Review)</option>
+                                <option value="lulus">Lulus (Memenuhi Standar)</option>
+                                <option value="tidak_lulus">Tidak Lulus (Out of Spec)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tanggal Pengujian</label>
+                            <input type="date" name="tanggal_uji" class="form-control" th:value="${#calendars.format(#calendars.createNow(), 'yyyy-MM-dd')}"/>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:20px;">
+                        <label>Catatan / Keterangan Analisis</label>
+                        <textarea name="catatan" class="form-control" rows="2" placeholder="Keterangan tambahan spektrum atau baseline drift..."></textarea>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" class="btn btn-secondary" onclick="switchTab('daftar')">Batal</button>
+                        <button type="submit" class="btn btn-primary">&#128190; Simpan Hasil Pengujian</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+<script>
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+    const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabName));
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const pane = document.getElementById('tab-' + tabName);
+    if (pane) pane.classList.add('active');
+}
+</script>
+
+</body>
+</html>

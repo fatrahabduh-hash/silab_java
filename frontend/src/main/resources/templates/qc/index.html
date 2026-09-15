@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('QC & Validasi Mutu')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('qc', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('P2 Quality Control &amp; Validasi Mutu', 0, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- Flash Messages -->
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Error</div>
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sukses</div>
+
+        <!-- KPI Mini Stats -->
+        <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+            <div class="stat-card">
+                <div class="val" style="color:var(--green);" th:text="${passCount}">0</div>
+                <div class="lbl">&#10003; QC Pass (Lolos)</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--yellow);" th:text="${warnCount}">0</div>
+                <div class="lbl">&#9888; QC Warning</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--red);" th:text="${failCount}">0</div>
+                <div class="lbl">&#10007; QC Fail (Gagal)</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--gold);" th:text="${pendingCount}">0</div>
+                <div class="lbl">&#9203; Menunggu Validasi</div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button type="button" class="tab-btn"
+                    th:classappend="${activeTab == 'daftar' ? 'active' : ''}"
+                    onclick="switchTab('daftar')">&#128221; Catatan Kontrol Mutu</button>
+            <button type="button" class="tab-btn"
+                    th:classappend="${activeTab == 'input' ? 'active' : ''}"
+                    onclick="switchTab('input')">&#10133; Input Data QC</button>
+        </div>
+
+        <!-- Tab 1: Catatan QC -->
+        <div id="tab-daftar" class="tab-pane" th:classappend="${activeTab == 'daftar' ? 'active' : ''}">
+            <div class="card">
+                <!-- Filter Form -->
+                <form th:action="@{/qc}" method="GET" style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+                    <input type="hidden" name="tab" value="daftar"/>
+                    <select name="tipe" class="form-control" style="width:160px;">
+                        <option value="">Semua Tipe QC</option>
+                        <option th:each="t : ${tipeQcOpts}" th:value="${t}" th:text="${#strings.toUpperCase(t)}" th:selected="${tipeFilter == t}">BLANKO</option>
+                    </select>
+                    <select name="flag" class="form-control" style="width:150px;">
+                        <option value="">Semua Flag</option>
+                        <option value="pass" th:selected="${flagFilter == 'pass'}">Pass</option>
+                        <option value="warning" th:selected="${flagFilter == 'warning'}">Warning</option>
+                        <option value="fail" th:selected="${flagFilter == 'fail'}">Fail</option>
+                    </select>
+                    <select name="status" class="form-control" style="width:160px;">
+                        <option value="">Semua Status Review</option>
+                        <option value="pending" th:selected="${statusFilter == 'pending'}">Pending</option>
+                        <option value="disetujui" th:selected="${statusFilter == 'disetujui'}">Disetujui</option>
+                        <option value="ditolak" th:selected="${statusFilter == 'ditolak'}">Ditolak</option>
+                    </select>
+                    <input type="text" name="parameter" class="form-control" style="width:140px;" placeholder="Parameter..." th:value="${paramFilter}"/>
+                    <button type="submit" class="btn btn-secondary">&#128269; Filter</button>
+                    <a th:href="@{/qc}" class="btn btn-secondary" style="color:var(--text3);">Reset</a>
+                </form>
+
+                <div class="tbl-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Sampel &amp; Klien</th>
+                            <th>Tipe QC</th>
+                            <th>Parameter</th>
+                            <th>Nilai QC</th>
+                            <th>Expected</th>
+                            <th>% Recovery / RPD</th>
+                            <th>Mutu Flag</th>
+                            <th>Status Review</th>
+                            <th>Aksi Validasi</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(qcList)}">
+                            <td colspan="9" style="text-align:center; color:var(--text3); padding:24px;">
+                                Belum ada data QC yang tercatat.
+                            </td>
+                        </tr>
+                        <tr th:each="q : ${qcList}">
+                            <td>
+                                <strong style="color:var(--text);" th:text="${q.sample != null ? q.sample.kodeSampel : ('ID #' + q.sampelId)}">SMP-001</strong>
+                                <div style="font-size:.7rem; color:var(--text3);" th:text="${q.sample != null ? q.sample.klien : '-'}">PT Klien</div>
+                            </td>
+                            <td>
+                                <span class="badge badge-draft" th:text="${#strings.toUpperCase(q.tipeQc)}">STANDAR</span>
+                            </td>
+                            <td style="font-weight:600;" th:text="${q.parameter != null ? q.parameter : '-'}">Fe</td>
+                            <td th:text="${q.nilaiQc != null ? (q.nilaiQc + ' ' + (q.satuan != null ? q.satuan : '%')) : '-'}">45.2 %</td>
+                            <td style="color:var(--text3);" th:text="${q.nilaiExpected != null ? (q.nilaiExpected + ' ' + (q.satuan != null ? q.satuan : '%')) : '-'}">45.0 %</td>
+                            <td>
+                                <div th:if="${q.persenRecovery != null}">
+                                    <strong style="color:var(--gold);" th:text="${q.persenRecovery} + '%'">100.4%</strong>
+                                    <div style="font-size:.68rem; color:var(--text3);">Recovery</div>
+                                </div>
+                                <div th:if="${q.rpd != null}">
+                                    <strong style="color:var(--gold);" th:text="${q.rpd} + '%'">2.1%</strong>
+                                    <div style="font-size:.68rem; color:var(--text3);">RPD</div>
+                                </div>
+                                <span th:if="${q.persenRecovery == null and q.rpd == null}" style="color:var(--text3);">-</span>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${q.flag == 'pass' ? 'badge-lulus' : (q.flag == 'fail' ? 'badge-tlulus' : 'badge-pending')}"
+                                      th:text="${#strings.toUpperCase(q.flag != null ? q.flag : 'PENDING')}">PASS</span>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${q.statusQc == 'disetujui' ? 'badge-lulus' : (q.statusQc == 'ditolak' ? 'badge-tlulus' : 'badge-draft')}"
+                                      th:text="${#strings.toUpperCase(q.statusQc != null ? q.statusQc : 'PENDING')}">PENDING</span>
+                            </td>
+                            <td>
+                                <div th:if="${q.statusQc == 'pending'}" style="display:flex; gap:4px;">
+                                    <form th:action="@{'/qc/' + ${q.id} + '/review'}" method="POST" style="display:inline;">
+                                        <input type="hidden" name="keputusan" value="disetujui"/>
+                                        <button type="submit" class="btn btn-primary" style="padding:3px 8px; font-size:.7rem;" title="Setujui Mutu">&#10003;</button>
+                                    </form>
+                                    <form th:action="@{'/qc/' + ${q.id} + '/review'}" method="POST" style="display:inline;">
+                                        <input type="hidden" name="keputusan" value="ditolak"/>
+                                        <button type="submit" class="btn btn-secondary" style="padding:3px 8px; font-size:.7rem; color:var(--red);" title="Tolak Mutu">&#10007;</button>
+                                    </form>
+                                </div>
+                                <div th:unless="${q.statusQc == 'pending'}" style="font-size:.72rem; color:var(--text3);">
+                                    <span th:text="${q.reviewer != null ? ('Oleh: ' + q.reviewer.nama) : 'Tervalidasi'}">Selesai</span>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Input Data QC -->
+        <div id="tab-input" class="tab-pane" th:classappend="${activeTab == 'input' ? 'active' : ''}">
+            <div class="card" style="max-width:800px;">
+                <div class="card-title">&#10003; Formulir Pencatatan Kontrol Mutu (QC)</div>
+
+                <form th:action="@{/qc/simpan}" method="POST">
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label>Target Sampel Laboratorium <span style="color:var(--red)">*</span></label>
+                        <select name="sampel_id" class="form-control" required>
+                            <option value="">-- Pilih Sampel --</option>
+                            <option th:each="s : ${sampelList}" th:value="${s.id}"
+                                    th:text="${s.kodeSampel + ' — ' + s.jenisMaterial + ' (' + s.klien + ')'}"></option>
+                        </select>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="form-group">
+                            <label>Tipe Pengendalian Mutu <span style="color:var(--red)">*</span></label>
+                            <select name="tipe_qc" class="form-control" required>
+                                <option th:each="t : ${tipeQcOpts}" th:value="${t}" th:text="${#strings.toUpperCase(t)}">STANDAR</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Parameter Pengujian</label>
+                            <input type="text" name="parameter" class="form-control" placeholder="Contoh: Fe, SiO2, Au, Ni"/>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="form-group">
+                            <label>Nilai Pengukuran (QC Value)</label>
+                            <input type="number" step="0.0001" name="nilai_qc" class="form-control" placeholder="Nilai terukur"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Nilai Target / Sertifikat (Expected)</label>
+                            <input type="number" step="0.0001" name="nilai_expected" class="form-control" placeholder="Nilai acuan CRM"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Satuan</label>
+                            <input type="text" name="satuan" class="form-control" value="%"/>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
+                        <div class="form-group">
+                            <label>Batas Min Recovery (%)</label>
+                            <input type="number" step="0.1" name="batas_min_pct" class="form-control" value="85.0"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Batas Max Recovery (%)</label>
+                            <input type="number" step="0.1" name="batas_maks_pct" class="form-control" value="115.0"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Tanggal Analisis</label>
+                            <input type="date" name="tanggal_uji" class="form-control" th:value="${#calendars.format(#calendars.createNow(), 'yyyy-MM-dd')}"/>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" class="btn btn-secondary" onclick="switchTab('daftar')">Batal</button>
+                        <button type="submit" class="btn btn-primary">&#128190; Simpan Data Kontrol Mutu</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+<script>
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+    const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabName));
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const pane = document.getElementById('tab-' + tabName);
+    if (pane) pane.classList.add('active');
+}
+</script>
+
+</body>
+</html>

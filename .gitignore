@@ -21,3 +21,9 @@ frontend/scratch/
 # Binaries & Mobile APK
 *.apk
 frontend/pages/*.apk
+
+# Gradle & Java Build Output
+.gradle/
+**/.gradle/
+**/build/
+**/bin/

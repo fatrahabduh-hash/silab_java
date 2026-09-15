@@ -33,6 +33,56 @@ export class AuthRepository {
   }
 
   /**
+   * Ambil daftar seluruh pengguna (tanpa field password)
+   */
+  static async findAllUsers(): Promise<Omit<User, 'password'>[]> {
+    return prisma.user.findMany({
+      select: {
+        id: true,
+        nama: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: [{ role: 'asc' }, { nama: 'asc' }],
+    });
+  }
+
+  /**
+   * Buat pengguna baru
+   */
+  static async createUser(data: {
+    nama: string;
+    username: string;
+    passwordHash: string;
+    email?: string | null;
+    role: string;
+    status: string;
+  }): Promise<Omit<User, 'password'>> {
+    return prisma.user.create({
+      data: {
+        nama: data.nama,
+        username: data.username,
+        password: data.passwordHash,
+        email: data.email || null,
+        role: data.role as any,
+        status: data.status as any,
+      },
+      select: {
+        id: true,
+        nama: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  /**
    * Catat audit log upaya autentikasi ke log_aktivitas (tanpa menyimpan data sensitif)
    */
   static async logAuthAttempt(params: {

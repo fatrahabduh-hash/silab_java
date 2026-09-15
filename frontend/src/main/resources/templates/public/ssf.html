@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Sample Submission Form (SSF) — Aispektra Laboratory</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}"/>
+    <style>
+        body {
+            background: radial-gradient(circle at center, #0d2616 0%, #061109 100%);
+            min-height: 100vh;
+            padding: 40px 20px 60px;
+            display: block;
+            overflow-y: auto;
+        }
+        .ssf-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .ssf-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 32px 36px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+            margin-bottom: 24px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: var(--gold);
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .header p {
+            color: var(--text3);
+            font-size: .85rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="ssf-container">
+    <div class="header">
+        <h1>&#9879; AISPEKTRA LABORATORY</h1>
+        <p>Formulir Pengajuan Sampel Uji Mineral &amp; Logam Online (Sample Submission Form)</p>
+    </div>
+
+    <!-- Sukses Alert -->
+    <div th:if="${sukses}" class="ssf-card" style="border:2px solid var(--green); text-align:center;">
+        <div style="font-size:3rem; color:var(--green); margin-bottom:12px;">&#9989;</div>
+        <h2 style="color:var(--gold); margin-bottom:8px;">Permohonan Berhasil Dikirim!</h2>
+        <p style="color:var(--text2); font-size:.9rem; margin-bottom:16px;">
+            Terima kasih. Formulir pengajuan sampel Anda telah berhasil masuk ke sistem antrean laboratorium kami.<br>
+            Tim analis kami akan segera melakukan verifikasi dan menghubungi narahubung Anda.
+        </p>
+        <div style="display:flex; justify-content:center; gap:12px;">
+            <a th:href="@{/ssf}" class="btn btn-secondary">Kirim Formulir Baru Lainnya</a>
+            <a th:href="@{/login}" class="btn btn-primary">Masuk ke Portal &rarr;</a>
+        </div>
+    </div>
+
+    <!-- Flash Error -->
+    <div th:if="${errorMessage}" class="alert alert-danger" style="margin-bottom:20px;" th:text="${errorMessage}">Error</div>
+
+    <!-- SSF Form -->
+    <div th:unless="${sukses}" class="ssf-card">
+        <form th:action="@{/ssf/simpan}" method="POST">
+
+            <div class="card-title" style="color:var(--gold); border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:18px;">
+                1. Data Perusahaan / Klien Pemohon
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                <div class="form-group">
+                    <label>Nama Perusahaan / Klien <span style="color:var(--red)">*</span></label>
+                    <input type="text" name="klien" class="form-control" placeholder="Contoh: PT Mineral Sukses Abadi" required/>
+                </div>
+                <div class="form-group">
+                    <label>Email Narahubung <span style="color:var(--red)">*</span></label>
+                    <input type="email" name="email" class="form-control" placeholder="pic@perusahaan.com" required/>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
+                <div class="form-group">
+                    <label>Nama Narahubung (PIC)</label>
+                    <input type="text" name="kontak_person" class="form-control" placeholder="Nama lengkap PIC"/>
+                </div>
+                <div class="form-group">
+                    <label>No. Telepon / WhatsApp</label>
+                    <input type="text" name="telepon" class="form-control" placeholder="08123456789"/>
+                </div>
+                <div class="form-group">
+                    <label>Nomor Referensi PO / DO</label>
+                    <input type="text" name="po_referensi" class="form-control" placeholder="PO-2026-XYZ"/>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:24px;">
+                <label>Alamat Pengiriman Laporan / Surat</label>
+                <input type="text" name="alamat" class="form-control" placeholder="Alamat kantor perusahaan..."/>
+            </div>
+
+            <div class="card-title" style="color:var(--gold); border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center;">
+                <span>2. Rincian Sampel Mineral yang Dikirim</span>
+                <button type="button" class="btn btn-secondary" onclick="tambahBarisSampel()" style="font-size:.75rem; padding:4px 10px;">+ Tambah Sampel</button>
+            </div>
+
+            <div class="tbl-wrap" style="margin-bottom:24px;">
+                <table id="tabelSampelSsf">
+                    <thead>
+                    <tr>
+                        <th>Jenis Material</th>
+                        <th style="width:120px;">Berat (g)</th>
+                        <th>Parameter Diuji</th>
+                        <th>Metode Diminta</th>
+                        <th style="width:40px;"></th>
+                    </tr>
+                    </thead>
+                    <tbody id="tbodySampelSsf">
+                    <tr>
+                        <td>
+                            <select name="sample_material" class="form-control" required>
+                                <option th:each="m : ${materialOpts}" th:value="${m}" th:text="${m}">Bijih Emas</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" step="0.1" name="sample_berat" class="form-control" value="500"/>
+                        </td>
+                        <td>
+                            <input type="text" name="sample_parameter" class="form-control" placeholder="Au, Ag, Cu..." required/>
+                        </td>
+                        <td>
+                            <select name="sample_metode" class="form-control">
+                                <option th:each="met : ${metodeOpts}" th:value="${met}" th:text="${met}">XRF</option>
+                            </select>
+                        </td>
+                        <td style="text-align:center;">
+                            <button type="button" onclick="hapusBarisSampel(this)" style="background:none; border:none; color:var(--red); font-weight:bold; cursor:pointer;">&times;</button>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="form-group" style="margin-bottom:24px;">
+                <label>Instruksi Khusus / Catatan Analisis</label>
+                <textarea name="instruksi_khusus" class="form-control" rows="2" placeholder="Catatan pengujian, sensitivitas khusus, atau permintaan retensi sisa sampel..."></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <a th:href="@{/login}" style="color:var(--text3); font-size:.82rem; text-decoration:none;">&larr; Kembali ke Halaman Login</a>
+                <button type="submit" class="btn btn-primary" style="padding:12px 28px; font-weight:700;">&#128640; Kirim Formulir Pengajuan (SSF)</button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script>
+function tambahBarisSampel() {
+    const tbody = document.getElementById('tbodySampelSsf');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td>
+            <select name="sample_material" class="form-control" required>
+                <option value="Bijih Emas">Bijih Emas</option>
+                <option value="Nikel Laterit">Nikel Laterit</option>
+                <option value="Tembaga">Tembaga</option>
+                <option value="Bauksit">Bauksit</option>
+                <option value="Bijih Besi">Bijih Besi</option>
+                <option value="Timbal/Seng">Timbal/Seng</option>
+                <option value="Mangan">Mangan</option>
+                <option value="Kromit">Kromit</option>
+                <option value="Lainnya">Lainnya</option>
+            </select>
+        </td>
+        <td>
+            <input type="number" step="0.1" name="sample_berat" class="form-control" value="500"/>
+        </td>
+        <td>
+            <input type="text" name="sample_parameter" class="form-control" placeholder="Au, Ag, Cu..." required/>
+        </td>
+        <td>
+            <select name="sample_metode" class="form-control">
+                <option value="XRF">XRF</option>
+                <option value="AAS">AAS</option>
+                <option value="ICP-OES">ICP-OES</option>
+                <option value="Fire Assay">Fire Assay</option>
+                <option value="Gravimetri">Gravimetri</option>
+                <option value="Volumetri">Volumetri</option>
+            </select>
+        </td>
+        <td style="text-align:center;">
+            <button type="button" onclick="hapusBarisSampel(this)" style="background:none; border:none; color:var(--red); font-weight:bold; cursor:pointer;">&times;</button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function hapusBarisSampel(btn) {
+    const tbody = document.getElementById('tbodySampelSsf');
+    if (tbody.children.length > 1) {
+        btn.closest('tr').remove();
+    }
+}
+</script>
+
+</body>
+</html>

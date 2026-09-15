@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Manajemen Pengguna')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('pengguna', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('Manajemen Akun &amp; Hak Akses Pengguna', 0, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- Flash Messages -->
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Error</div>
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sukses</div>
+
+        <div style="display:grid; grid-template-columns: 3fr 2fr; gap:20px;">
+
+            <!-- Left: Daftar Pengguna -->
+            <div class="card">
+                <div class="card-title">&#128101; Daftar Pengguna Sistem Laboratorium</div>
+
+                <div class="tbl-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Nama Lengkap</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(users)}">
+                            <td colspan="5" style="text-align:center; color:var(--text3); padding:20px;">Belum ada pengguna terdaftar.</td>
+                        </tr>
+                        <tr th:each="u : ${users}">
+                            <td><strong style="color:var(--text);" th:text="${u.nama}">Admin</strong></td>
+                            <td style="color:var(--gold);" th:text="${u.username}">admin</td>
+                            <td style="font-size:.8rem; color:var(--text3);" th:text="${u.email != null ? u.email : '-'}">-</td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${u.role == 'admin' ? 'badge-tlulus' : (u.role == 'analis' ? 'badge-lulus' : (u.role == 'supervisor' ? 'badge-pending' : 'badge-info'))}"
+                                      th:text="${#strings.toUpperCase(u.role)}">ADMIN</span>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${u.status == 'aktif' ? 'badge-lulus' : 'badge-draft'}"
+                                      th:text="${#strings.toUpperCase(u.status)}">AKTIF</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Right: Form Tambah Pengguna -->
+            <div class="card">
+                <div class="card-title">&#10133; Tambah Pengguna Baru</div>
+
+                <form th:action="@{/pengguna/simpan}" method="POST">
+                    <div class="form-group" style="margin-bottom:14px;">
+                        <label>Nama Lengkap <span style="color:var(--red)">*</span></label>
+                        <input type="text" name="nama" class="form-control" placeholder="Nama staf / analis..." required/>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                        <div class="form-group">
+                            <label>Username <span style="color:var(--red)">*</span></label>
+                            <input type="text" name="username" class="form-control" placeholder="username" required/>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" name="email" class="form-control" placeholder="email@lab.com"/>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                        <div class="form-group">
+                            <label>Role Hak Akses <span style="color:var(--red)">*</span></label>
+                            <select name="role" class="form-control" required>
+                                <option th:each="r : ${roleOpts}" th:value="${r}" th:text="${#strings.toUpperCase(r)}">ANALIS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Status Akun</label>
+                            <select name="status" class="form-control">
+                                <option value="aktif">Aktif</option>
+                                <option value="nonaktif">Nonaktif</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
+                        <div class="form-group">
+                            <label>Password <span style="color:var(--red)">*</span></label>
+                            <input type="password" name="password" class="form-control" placeholder="Password" required/>
+                        </div>
+                        <div class="form-group">
+                            <label>Konfirmasi Password <span style="color:var(--red)">*</span></label>
+                            <input type="password" name="password2" class="form-control" placeholder="Ulangi" required/>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width:100%;">&#128190; Daftarkan Pengguna Baru</button>
+                </form>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+</body>
+</html>

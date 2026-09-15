@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Data XRF Explorer')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('xrf', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('Data Spektrometri XRF Explorer 7000', 0, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- Flash Messages -->
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Error</div>
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sukses</div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                <div class="card-title" style="margin-bottom:0;">Riwayat Pengukuran Spektrometri XRF</div>
+
+                <!-- Filter Form -->
+                <form th:action="@{/xrf/data}" method="GET" style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <input type="text" name="search" class="form-control" style="width:240px;" placeholder="Cari sampel / operator..." th:value="${search}"/>
+                    <button type="submit" class="btn btn-secondary">&#128269; Cari</button>
+                    <a th:href="@{/xrf/data}" class="btn btn-secondary" style="color:var(--text3);">Reset</a>
+                </form>
+            </div>
+
+            <div class="tbl-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>ID &amp; Tgl Uji</th>
+                        <th>Nama Sampel XRF</th>
+                        <th>Work Curve / Grade</th>
+                        <th>Operator</th>
+                        <th>Komposisi Unsur Terdeteksi</th>
+                        <th>Sampel Terkait</th>
+                        <th>Aksi Tautkan</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${#lists.isEmpty(xrfList)}">
+                        <td colspan="7" style="text-align:center; color:var(--text3); padding:24px;">
+                            Belum ada rekaman data pengukuran XRF dari instrumen Explorer 7000.
+                        </td>
+                    </tr>
+                    <tr th:each="x : ${xrfList}">
+                        <td>
+                            <strong style="color:var(--gold);" th:text="'#' + ${x.id}">#1</strong>
+                            <div style="font-size:.72rem; color:var(--text3);" th:text="${x.testDate != null and #strings.length(x.testDate) >= 16 ? #strings.substring(x.testDate, 0, 16) : (x.testDate != null ? x.testDate : '-')}">2026-09-14 10:00</div>
+                        </td>
+                        <td>
+                            <div style="font-weight:600; color:var(--text);" th:text="${x.sampleName}">SMPL-XRF-01</div>
+                            <div style="font-size:.7rem; color:var(--text3);" th:text="${x.sampleSupplier != null ? x.sampleSupplier : 'Internal Lab'}">Internal Lab</div>
+                        </td>
+                        <td>
+                            <span class="badge badge-draft" th:text="${x.workCurveName != null ? x.workCurveName : 'Standard'}">Mining</span>
+                            <div th:if="${x.grade}" style="font-size:.7rem; color:var(--text3);" th:text="'Grade: ' + ${x.grade}">Grade A</div>
+                        </td>
+                        <td style="font-size:.8rem;" th:text="${x.operator != null ? x.operator : '-'}">Operator</td>
+                        <td>
+                            <div th:if="${x.elements != null and !#lists.isEmpty(x.elements)}" style="display:flex; flex-wrap:wrap; gap:4px; max-width:260px;">
+                                <span th:each="elm : ${x.elements}" class="badge badge-info" style="font-size:.68rem;"
+                                      th:text="${elm.elementName + ': ' + elm.concentration + (elm.unit != null ? elm.unit : '%')}">Fe: 45.2%</span>
+                            </div>
+                            <span th:if="${x.elements == null or #lists.isEmpty(x.elements)}" style="color:var(--text3); font-size:.75rem;">Tidak ada unsur</span>
+                        </td>
+                        <td>
+                            <span th:if="${x.sample != null}" class="badge badge-lulus"
+                                  th:text="${x.sample.kodeSampel + ' (' + x.sample.klien + ')'}">SMP-001</span>
+                            <span th:unless="${x.sample != null}" style="color:var(--yellow); font-size:.75rem;">Belum Ditautkan</span>
+                        </td>
+                        <td>
+                            <form th:action="@{'/xrf/measurements/' + ${x.id} + '/link'}" method="POST" style="display:flex; gap:4px;">
+                                <select name="sampel_id" class="form-control" style="font-size:.72rem; padding:3px 6px; width:130px;" required>
+                                    <option value="">-- Tautkan ke --</option>
+                                    <option th:each="s : ${sampelList}" th:value="${s.id}" th:text="${s.kodeSampel}"></option>
+                                </select>
+                                <button type="submit" class="btn btn-secondary" style="font-size:.7rem; padding:3px 8px;">&#128279;</button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+</body>
+</html>

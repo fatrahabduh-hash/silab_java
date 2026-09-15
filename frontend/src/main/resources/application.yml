@@ -1,0 +1,30 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+backend:
+  api:
+    base-url: ${BACKEND_API_URL:http://localhost:5000}
+    connect-timeout-ms: ${BACKEND_CONNECT_TIMEOUT:5000}
+    read-timeout-ms: ${BACKEND_READ_TIMEOUT:15000}
+    # Service account fallback for development/demo when session token not present
+    auth:
+      default-username: ${BACKEND_DEFAULT_USER:admin}
+      default-password: ${BACKEND_DEFAULT_PASS:password}
+
+app:
+  name: "LabMineral Pro"
+  version: "2.0.0"
+
+spring:
+  jackson:
+    default-property-inclusion: non_null
+  thymeleaf:
+    cache: false
+    mode: HTML
+    encoding: UTF-8
+
+logging:
+  level:
+    root: INFO
+    com.labmineral: DEBUG
+    org.springframework.web: INFO

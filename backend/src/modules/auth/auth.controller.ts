@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
+import { AuthRepository } from './auth.repository.js';
+import { PasswordUtil } from './utils/password.util.js';
 import { ApiResponse } from '../../common/utils/api-response.js';
 import { AppError } from '../../common/errors/app-error.js';
 
@@ -34,4 +36,31 @@ export class AuthController {
     const userProfile = await AuthService.getCurrentUser(req.user.sub);
     return ApiResponse.success(res, 'Data pengguna aktif berhasil diambil', userProfile, 200);
   }
+
+  static async getUsers(req: Request, res: Response): Promise<Response> {
+    const users = await AuthRepository.findAllUsers();
+    return ApiResponse.success(res, 'Daftar pengguna berhasil diambil', users, 200);
+  }
+
+  static async createUser(req: Request, res: Response): Promise<Response> {
+    const { nama, username, password, email, role, status } = req.body;
+    if (!username || !password || !nama) {
+      throw AppError.badRequest('Nama, username, dan password wajib diisi');
+    }
+    const existing = await AuthRepository.findByIdentifier(username);
+    if (existing) {
+      throw AppError.conflict('Username sudah digunakan');
+    }
+    const passwordHash = await PasswordUtil.hash(password);
+    const newUser = await AuthRepository.createUser({
+      nama,
+      username,
+      passwordHash,
+      email,
+      role: role || 'analis',
+      status: status || 'aktif',
+    });
+    return ApiResponse.success(res, 'Pengguna baru berhasil dibuat', newUser, 201);
+  }
 }
+

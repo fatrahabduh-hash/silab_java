@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="id" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: head('Invoice & Penagihan')}"></head>
+<body>
+
+<div th:replace="~{fragments/sidebar :: sidebar('invoice', ${userNama})}"></div>
+
+<div id="main">
+    <div th:replace="~{fragments/header :: topbar('Manajemen Invoice &amp; Penagihan Laboratorium', 0, ${userNama}, ${userRole})}"></div>
+
+    <div class="content">
+
+        <!-- Flash Messages -->
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Error</div>
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Sukses</div>
+
+        <!-- KPI Mini Stats -->
+        <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+            <div class="stat-card">
+                <div class="val" style="color:var(--yellow);" th:text="${draftCount}">0</div>
+                <div class="lbl">&#128221; Draft Invoice</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--text);" th:text="${terbitCount}">0</div>
+                <div class="lbl">&#128236; Diterbitkan (Belum Bayar)</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--green);" th:text="${lunasCount}">0</div>
+                <div class="lbl">&#9989; Lunas</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" style="color:var(--gold); font-size:1.25rem;"
+                     th:text="'Rp ' + ${#numbers.formatDecimal(totalPiutang != null ? totalPiutang : 0, 0, 'POINT', 0, 'COMMA')}">Rp 0</div>
+                <div class="lbl">&#128176; Total Piutang Aktif</div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button type="button" class="tab-btn"
+                    th:classappend="${activeTab == 'daftar' ? 'active' : ''}"
+                    onclick="switchTab('daftar')">&#128196; Daftar Invoice</button>
+            <button type="button" class="tab-btn"
+                    th:classappend="${activeTab == 'buat' ? 'active' : ''}"
+                    onclick="switchTab('buat')">&#10133; Terbitkan Invoice Baru</button>
+        </div>
+
+        <!-- Tab 1: Daftar Invoice -->
+        <div id="tab-daftar" class="tab-pane" th:classappend="${activeTab == 'daftar' ? 'active' : ''}">
+            <div class="card">
+                <!-- Filter Form -->
+                <form th:action="@{/invoice}" method="GET" style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+                    <input type="hidden" name="tab" value="daftar"/>
+                    <input type="text" name="search" class="form-control" style="width:240px;" placeholder="Cari no. invoice / klien..." th:value="${search}"/>
+                    <select name="status" class="form-control" style="width:160px;">
+                        <option value="">Semua Status</option>
+                        <option value="draft" th:selected="${statusFilter == 'draft'}">Draft</option>
+                        <option value="diterbitkan" th:selected="${statusFilter == 'diterbitkan'}">Diterbitkan</option>
+                        <option value="lunas" th:selected="${statusFilter == 'lunas'}">Lunas</option>
+                        <option value="dibatalkan" th:selected="${statusFilter == 'dibatalkan'}">Dibatalkan</option>
+                    </select>
+                    <button type="submit" class="btn btn-secondary">&#128269; Filter</button>
+                    <a th:href="@{/invoice}" class="btn btn-secondary" style="color:var(--text3);">Reset</a>
+                </form>
+
+                <div class="tbl-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>No. Invoice</th>
+                            <th>Klien &amp; Batch Penerimaan</th>
+                            <th>Tgl Invoice</th>
+                            <th>Jatuh Tempo</th>
+                            <th>Total Tagihan</th>
+                            <th>Status Tagihan</th>
+                            <th>Aksi Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:if="${#lists.isEmpty(invList)}">
+                            <td colspan="7" style="text-align:center; color:var(--text3); padding:24px;">
+                                Belum ada invoice yang terdaftar.
+                            </td>
+                        </tr>
+                        <tr th:each="inv : ${invList}">
+                            <td>
+                                <strong style="color:var(--gold);" th:text="${inv.nomorInvoice}">INV-2609-001</strong>
+                            </td>
+                            <td>
+                                <div style="font-weight:600; color:var(--text);" th:text="${inv.klien}">PT Mineral</div>
+                                <div style="font-size:.7rem; color:var(--text3);"
+                                     th:text="${inv.receipt != null ? ('Ref: ' + inv.receipt.nomorPenerimaan) : 'Tagihan Terpisah'}">Ref: REC-001</div>
+                            </td>
+                            <td style="font-size:.8rem; color:var(--text3);"
+                                th:text="${inv.tanggalInvoice != null and #strings.length(inv.tanggalInvoice) >= 10 ? #strings.substring(inv.tanggalInvoice, 0, 10) : (inv.tanggalInvoice != null ? inv.tanggalInvoice : '-')}">2026-09-14</td>
+                            <td style="font-size:.8rem; color:var(--text3);"
+                                th:text="${inv.tanggalJatuhTempo != null and #strings.length(inv.tanggalJatuhTempo) >= 10 ? #strings.substring(inv.tanggalJatuhTempo, 0, 10) : (inv.tanggalJatuhTempo != null ? inv.tanggalJatuhTempo : '-')}">2026-09-28</td>
+                            <td>
+                                <strong style="color:var(--text);"
+                                        th:text="'Rp ' + ${#numbers.formatDecimal(inv.total != null ? inv.total : 0, 0, 'POINT', 0, 'COMMA')}">Rp 0</strong>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${inv.status == 'lunas' ? 'badge-lulus' : (inv.status == 'diterbitkan' ? 'badge-info' : (inv.status == 'dibatalkan' ? 'badge-tlulus' : 'badge-draft'))}"
+                                      th:text="${inv.status != null ? #strings.toUpperCase(inv.status) : 'DRAFT'}">DRAFT</span>
+                            </td>
+                            <td>
+                                <div style="display:flex; gap:6px;">
+                                    <form th:if="${inv.status == 'draft'}" th:action="@{'/invoice/' + ${inv.id} + '/status'}" method="POST" style="display:inline;">
+                                        <input type="hidden" name="status" value="diterbitkan"/>
+                                        <button type="submit" class="btn btn-secondary" style="padding:4px 8px; font-size:.72rem;">&#128236; Terbitkan</button>
+                                    </form>
+                                    <form th:if="${inv.status == 'diterbitkan'}" th:action="@{'/invoice/' + ${inv.id} + '/status'}" method="POST" style="display:inline;">
+                                        <input type="hidden" name="status" value="lunas"/>
+                                        <button type="submit" class="btn btn-primary" style="padding:4px 8px; font-size:.72rem;">&#9989; Lunas</button>
+                                    </form>
+                                    <form th:if="${inv.status != 'lunas' && inv.status != 'dibatalkan'}" th:action="@{'/invoice/' + ${inv.id} + '/status'}" method="POST" style="display:inline;">
+                                        <input type="hidden" name="status" value="dibatalkan"/>
+                                        <button type="submit" class="btn btn-secondary" style="padding:4px 8px; font-size:.72rem; color:var(--red);" title="Batalkan">&#10007;</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Terbitkan Invoice Baru -->
+        <div id="tab-buat" class="tab-pane" th:classappend="${activeTab == 'buat' ? 'active' : ''}">
+            <div class="card" style="max-width:900px;">
+                <div class="card-title">&#128179; Formulir Penerbitan Tagihan / Invoice Pengujian</div>
+
+                <form th:action="@{/invoice/simpan}" method="POST">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="form-group">
+                            <label>Nama Perusahaan / Klien <span style="color:var(--red)">*</span></label>
+                            <input type="text" name="klien" class="form-control" placeholder="Contoh: PT Bumi Resources Minerals" required/>
+                        </div>
+                        <div class="form-group">
+                            <label>Penerimaan Sampel Terkait</label>
+                            <select name="penerimaan_id" class="form-control">
+                                <option value="">-- Tanpa Batch / Tagihan Mandiri --</option>
+                                <option th:each="rc : ${receiptList}" th:value="${rc.id}"
+                                        th:text="${rc.nomorPenerimaan + ' — ' + rc.klien + ' (' + rc.jumlahSampel + ' sampel)'}"></option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:16px;">
+                        <label>Alamat Penagihan Klien</label>
+                        <input type="text" name="alamat_klien" class="form-control" placeholder="Alamat lengkap perusahaan klien..."/>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
+                        <div class="form-group">
+                            <label>Tanggal Invoice</label>
+                            <input type="date" name="tanggal_invoice" class="form-control" th:value="${#calendars.format(#calendars.createNow(), 'yyyy-MM-dd')}"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Jatuh Tempo</label>
+                            <input type="date" name="tanggal_jatuh_tempo" class="form-control"/>
+                        </div>
+                        <div class="form-group">
+                            <label>Diskon (%)</label>
+                            <input type="number" step="0.1" name="diskon_pct" class="form-control" value="0"/>
+                        </div>
+                        <div class="form-group">
+                            <label>PPN (%)</label>
+                            <input type="number" step="0.1" name="ppn_pct" class="form-control" value="11"/>
+                        </div>
+                    </div>
+
+                    <!-- Item Lines -->
+                    <div style="background:var(--bg3); padding:16px; border-radius:8px; margin-bottom:20px; border:1px solid var(--border);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                            <label style="font-size:.85rem; font-weight:700; color:var(--gold);">Rincian Layanan Uji &amp; Analisis:</label>
+                            <button type="button" class="btn btn-secondary" onclick="tambahBarisItem()" style="padding:4px 10px; font-size:.75rem;">+ Tambah Item</button>
+                        </div>
+
+                        <table style="width:100%;" id="tabelItemInvoice">
+                            <thead>
+                            <tr style="text-align:left; font-size:.75rem; color:var(--text3);">
+                                <th style="padding:6px;">Deskripsi Layanan</th>
+                                <th style="width:100px; padding:6px;">Qty</th>
+                                <th style="width:180px; padding:6px;">Harga Satuan (Rp)</th>
+                                <th style="width:40px; padding:6px;"></th>
+                            </tr>
+                            </thead>
+                            <tbody id="tbodyItemInvoice">
+                            <tr>
+                                <td style="padding:6px;">
+                                    <input type="text" name="item_deskripsi" class="form-control" placeholder="Pengujian XRF Bijih Nikel" required/>
+                                </td>
+                                <td style="padding:6px;">
+                                    <input type="number" name="item_qty" class="form-control" value="1" min="1" required/>
+                                </td>
+                                <td style="padding:6px;">
+                                    <input type="number" step="1000" name="item_harga" class="form-control" placeholder="250000" required/>
+                                </td>
+                                <td style="padding:6px; text-align:center;">
+                                    <button type="button" onclick="hapusBarisItem(this)" style="background:none; border:none; color:var(--red); font-weight:bold; cursor:pointer;">&times;</button>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:20px;">
+                        <label>Catatan Syarat Pembayaran</label>
+                        <textarea name="catatan" class="form-control" rows="2" placeholder="Transfer ke Rekening Bank Mandiri Cabang Lab..."></textarea>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" class="btn btn-secondary" onclick="switchTab('daftar')">Batal</button>
+                        <button type="submit" class="btn btn-primary">&#128190; Simpan &amp; Terbitkan Invoice</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div th:replace="~{fragments/footer :: scripts}"></div>
+
+<script>
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+    const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabName));
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const pane = document.getElementById('tab-' + tabName);
+    if (pane) pane.classList.add('active');
+}
+
+function tambahBarisItem() {
+    const tbody = document.getElementById('tbodyItemInvoice');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td style="padding:6px;">
+            <input type="text" name="item_deskripsi" class="form-control" placeholder="Deskripsi layanan uji..." required/>
+        </td>
+        <td style="padding:6px;">
+            <input type="number" name="item_qty" class="form-control" value="1" min="1" required/>
+        </td>
+        <td style="padding:6px;">
+            <input type="number" step="1000" name="item_harga" class="form-control" placeholder="0" required/>
+        </td>
+        <td style="padding:6px; text-align:center;">
+            <button type="button" onclick="hapusBarisItem(this)" style="background:none; border:none; color:var(--red); font-weight:bold; cursor:pointer;">&times;</button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function hapusBarisItem(btn) {
+    const tbody = document.getElementById('tbodyItemInvoice');
+    if (tbody.children.length > 1) {
+        btn.closest('tr').remove();
+    }
+}
+</script>
+
+</body>
+</html>
